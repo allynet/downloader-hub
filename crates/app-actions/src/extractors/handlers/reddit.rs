@@ -29,7 +29,7 @@ impl Extractor for Reddit {
             x.set_query(None);
             x
         };
-        let file_ext = url.path().split('.').last().unwrap_or_default();
+        let file_ext = url.path().split('.').next_back().unwrap_or_default();
         let info = {
             let x = ExtractedInfo::from_url(request, url.as_str());
             match file_ext {

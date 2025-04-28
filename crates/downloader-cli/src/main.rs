@@ -144,7 +144,6 @@ async fn main() {
         if let Err(e) = SplitScenes.run(&req).await {
             error!("Failed to split {f:?}: {e}");
             failed_split.push((f.clone(), e));
-            continue;
         }
     }
 
@@ -176,10 +175,7 @@ fn split_vec_err<T: Debug, E: Debug>(v: Vec<Result<T, E>>) -> (Vec<T>, Vec<E>) {
 fn print_errors<T: Sized>(name: &str, maybe_errors: Vec<Result<T, String>>) -> Vec<T> {
     let errors = maybe_errors
         .iter()
-        .filter_map(|maybe_err| match maybe_err {
-            Ok(_) => None,
-            Err(err) => Some(err),
-        })
+        .filter_map(|maybe_err| maybe_err.as_ref().err())
         .collect::<Vec<_>>();
 
     if !errors.is_empty() {

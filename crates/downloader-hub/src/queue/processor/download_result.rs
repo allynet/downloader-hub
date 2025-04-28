@@ -116,7 +116,7 @@ async fn fix(request_id: i32, app_path: AppPath) -> Result<(), HandlerError> {
             })
             .await?;
         }
-    };
+    }
 
     Ok(())
 }

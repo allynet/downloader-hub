@@ -60,7 +60,7 @@ pub enum ActionResultData {
 
 impl From<Vec<PathBuf>> for ActionResultData {
     fn from(value: Vec<PathBuf>) -> Self {
-        Self::Paths(value.into_iter().map(Into::into).collect())
+        Self::Paths(value)
     }
 }
 

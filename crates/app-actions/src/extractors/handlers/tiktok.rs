@@ -47,7 +47,7 @@ async fn get_media_download_urls(req: &ExtractInfoRequest) -> Result<UrlWithMeta
         .as_request_builder()?
         .send()
         .await
-        .map_err(|e| format!("Failed to send request to imgur: {:?}", e))?;
+        .map_err(|e| format!("Failed to send request to tiktok: {:?}", e))?;
     trace!(?resp, "Got response from tiktok");
 
     let mut resp_cookies = HashMap::<String, String>::new();

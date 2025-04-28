@@ -4,6 +4,7 @@ use app_config::Config;
 use app_helpers::file_type::{infer_file_type, mime};
 use reqwest::{multipart, Body};
 use serde::{Deserialize, Serialize};
+use std::fmt::Write;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use tracing::trace;
@@ -102,7 +103,9 @@ impl Action for OcrImage {
 
             let mut text = "Available OCR engines:\n".to_string();
             for handler in handlers {
-                text.push_str(&format!("  - {}\n", handler));
+                if let Err(e) = writeln!(text, "  - {}", handler) {
+                    tracing::error!("Failed to write to text: {e:?}");
+                }
             }
             text = text.trim().to_string();
 

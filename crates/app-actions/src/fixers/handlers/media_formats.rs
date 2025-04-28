@@ -368,7 +368,7 @@ const CODEC_HANDLERS: &[CodecHandler] = &[
                     .is_some_and(|vcodec| vcodec == "h264");
 
                 let audio_codec_ok =
-                    get_stream_of_type(&file_format_info, "audio").map_or(true, |audio_stream| {
+                    get_stream_of_type(&file_format_info, "audio").is_none_or(|audio_stream| {
                         audio_stream
                             .codec_name
                             .as_ref()

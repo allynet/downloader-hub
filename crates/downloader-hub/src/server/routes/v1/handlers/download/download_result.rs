@@ -158,7 +158,7 @@ async fn download_result(
                 }
             }
             DownloadResultMeta::Error(_) => {}
-        };
+        }
     }
 
     let resp = responder.into_response(headers).await;
