@@ -1,4 +1,5 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use url::Url;
@@ -24,7 +25,7 @@ impl Extractor for Tumblr {
     }
 }
 
-static DOMAIN_MATCH: Lazy<Regex> = Lazy::new(|| {
+static DOMAIN_MATCH: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^(?:(?P<subdomain>[^\-][a-zA-Z0-9\-]{0,30}[^\-])\.)?tumblr\.com")
         .expect("Invalid regex")
 });

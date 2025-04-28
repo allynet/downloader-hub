@@ -1,4 +1,5 @@
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
@@ -94,7 +95,7 @@ impl Bsky {
     }
 }
 
-static BSKY_PATH_MATCHER: Lazy<Regex> = Lazy::new(|| {
+static BSKY_PATH_MATCHER: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^\/profile\/(?<username>[^/]+)\/post\/(?<postId>[a-zA-Z0-9]+)")
         .expect("Failed to compile regex")
 });

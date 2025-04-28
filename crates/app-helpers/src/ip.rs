@@ -1,9 +1,8 @@
-use std::net::IpAddr;
+use std::{net::IpAddr, sync::LazyLock};
 
 use dns_lookup::lookup_host;
 use ipnet::{Ipv4Net, Ipv6Net};
 use iprange::IpRange;
-use once_cell::sync::Lazy;
 use url::Url;
 
 #[derive(Debug, thiserror::Error)]
@@ -65,7 +64,7 @@ pub fn url_resolves_to_valid_ip(url: &str) -> Result<Url, UrlIpValidationError> 
     Ok(parsed_url)
 }
 
-pub static RESERVED_RANGE_IPV4: Lazy<IpRange<Ipv4Net>> = Lazy::new(|| {
+pub static RESERVED_RANGE_IPV4: LazyLock<IpRange<Ipv4Net>> = LazyLock::new(|| {
     [
         "0.0.0.0/8",
         "10.0.0.0/8",
@@ -90,7 +89,7 @@ pub static RESERVED_RANGE_IPV4: Lazy<IpRange<Ipv4Net>> = Lazy::new(|| {
     .collect()
 });
 
-pub static RESERVED_RANGE_IPV6: Lazy<IpRange<Ipv6Net>> = Lazy::new(|| {
+pub static RESERVED_RANGE_IPV6: LazyLock<IpRange<Ipv6Net>> = LazyLock::new(|| {
     [
         "::/128",
         "::1/128",

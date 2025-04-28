@@ -1,6 +1,6 @@
 pub mod helpers;
 
-use std::{collections::HashMap, string::ToString};
+use std::{collections::HashMap, string::ToString, sync::OnceLock};
 
 use app_actions::{
     actions::{handlers::ActionEntry, ActionOptions, AVAILABLE_ACTIONS},
@@ -10,7 +10,6 @@ use app_actions::{
 };
 use app_config::Config;
 use helpers::status_message::StatusMessage;
-use once_cell::sync::OnceCell;
 use teloxide::{
     adaptors::trace,
     prelude::*,
@@ -26,7 +25,7 @@ use crate::queue::{Task, TaskQueue};
 pub type TeloxideBot =
     teloxide::adaptors::CacheMe<trace::Trace<teloxide::adaptors::DefaultParseMode<teloxide::Bot>>>;
 
-static TELEGRAM_BOT: OnceCell<TeloxideBot> = OnceCell::new();
+static TELEGRAM_BOT: OnceLock<TeloxideBot> = OnceLock::new();
 
 pub struct TelegramBot;
 impl TelegramBot {

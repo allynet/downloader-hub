@@ -19,7 +19,6 @@ anyhow = "1.0.91"
 async-trait = "0.1.83"
 chrono = { version = "0.4.38", features = ["alloc", "serde"] }
 futures = { version = "0.3.31", features = ["thread-pool"] }
-once_cell = { version = "1.20.2", features = ["parking_lot"] }
 serde = { version = "1.0", features = ["derive", "alloc", "rc"] }
 serde_json = { version = "1.0" }
 thiserror = "1.0"

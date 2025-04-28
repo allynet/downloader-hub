@@ -2,9 +2,7 @@ pub mod generic;
 pub mod music;
 pub mod yt_dlp;
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 pub use super::{
     common::{download_request::DownloadRequest, download_result::DownloadResult},
@@ -13,9 +11,10 @@ pub use super::{
 
 pub type DownloaderEntry = Arc<dyn Downloader>;
 
-pub static ALL_DOWNLOADERS: Lazy<Vec<DownloaderEntry>> = Lazy::new(all_downloaders);
+pub static ALL_DOWNLOADERS: LazyLock<Vec<DownloaderEntry>> = LazyLock::new(all_downloaders);
 
-pub static AVAILABLE_DOWNLOADERS: Lazy<Vec<DownloaderEntry>> = Lazy::new(available_downloaders);
+pub static AVAILABLE_DOWNLOADERS: LazyLock<Vec<DownloaderEntry>> =
+    LazyLock::new(available_downloaders);
 
 fn all_downloaders() -> Vec<DownloaderEntry> {
     vec![

@@ -1,5 +1,6 @@
+use std::sync::LazyLock;
+
 use node_info::{get_node_info, NodeInfo};
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace, warn};
 
@@ -91,7 +92,7 @@ impl Extractor for ActivityPub {
     }
 }
 
-static HANDLERS: Lazy<Vec<Box<dyn APHandler>>> = Lazy::new(handlers);
+static HANDLERS: LazyLock<Vec<Box<dyn APHandler>>> = LazyLock::new(handlers);
 
 #[async_trait::async_trait]
 trait APHandler: std::fmt::Debug + Send + Sync {

@@ -1,12 +1,11 @@
-use std::time::Duration;
+use std::{sync::OnceLock, time::Duration};
 
 use app_config::Config;
 use app_migration::MigratorTrait;
-use once_cell::sync::OnceCell;
 use sea_orm::{Database, DatabaseConnection};
 use tracing::{debug, error, info, trace};
 
-static APP_DB: OnceCell<AppDb> = OnceCell::new();
+static APP_DB: OnceLock<AppDb> = OnceLock::new();
 
 #[derive(Debug, Clone)]
 pub struct AppDb {

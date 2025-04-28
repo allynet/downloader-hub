@@ -1,6 +1,5 @@
-use std::result::Result;
+use std::{result::Result, sync::LazyLock};
 
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
@@ -30,7 +29,7 @@ impl Extractor for Instagram {
     }
 }
 
-static URL_MATCH: Lazy<Regex> = Lazy::new(|| {
+static URL_MATCH: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(r"^https?://(www\.)?instagram.com/(p|reel)/(?P<post_id>[^/?]+)")
         .expect("Invalid regex")
 });

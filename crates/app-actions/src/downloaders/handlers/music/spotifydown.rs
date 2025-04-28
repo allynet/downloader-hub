@@ -1,10 +1,10 @@
 use std::{
     path::{Path, PathBuf},
+    sync::LazyLock,
     time::Duration,
 };
 
 use app_helpers::domain::DomainParser;
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::Deserialize;
 use tracing::{debug, trace, warn};
@@ -18,8 +18,8 @@ use crate::{
 
 const URL_BASE: &str = "https://spotifydown.com";
 const API_BASE: &str = "https://api.spotifydown.com";
-static PATH_REGEX: Lazy<Regex> =
-    Lazy::new(|| Regex::new(r"/track/(?<id>[a-zA-Z0-9]+)").expect("Invalid regex"));
+static PATH_REGEX: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"/track/(?<id>[a-zA-Z0-9]+)").expect("Invalid regex"));
 
 #[derive(Debug)]
 pub struct SpotifydownProvider;

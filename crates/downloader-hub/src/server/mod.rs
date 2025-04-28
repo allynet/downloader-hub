@@ -1,4 +1,4 @@
-use std::{net::SocketAddr, time::Duration};
+use std::{net::SocketAddr, sync::LazyLock, time::Duration};
 
 use app_config::Config;
 use axum::{
@@ -8,7 +8,6 @@ use axum::{
     Extension,
 };
 use listenfd::ListenFd;
-use once_cell::sync::Lazy;
 use tokio::net::TcpListener;
 use tower::ServiceBuilder;
 use tower_http::{
@@ -63,8 +62,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-static CACHE_CONTROL: Lazy<HeaderValue> =
-    Lazy::new(|| HeaderValue::from_static("private, max-age=0"));
+static CACHE_CONTROL: LazyLock<HeaderValue> =
+    LazyLock::new(|| HeaderValue::from_static("private, max-age=0"));
 
 #[derive(Clone)]
 struct MakeRequestUlid;

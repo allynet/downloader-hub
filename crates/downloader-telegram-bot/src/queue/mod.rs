@@ -2,13 +2,14 @@ mod common;
 mod processor;
 pub mod task;
 
+use std::sync::LazyLock;
+
 use deadqueue::unlimited::Queue;
-use once_cell::sync::Lazy;
 pub use processor::TaskQueueProcessor;
 pub use task::Task;
 use tracing::trace;
 
-static TASK_QUEUE: Lazy<Queue<Task>> = Lazy::new(Queue::new);
+static TASK_QUEUE: LazyLock<Queue<Task>> = LazyLock::new(Queue::new);
 
 pub struct TaskQueue;
 impl TaskQueue {

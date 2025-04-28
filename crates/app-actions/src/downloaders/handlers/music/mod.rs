@@ -1,9 +1,11 @@
 pub mod spotifydown;
 pub mod yams;
 
-use std::path::{Path, PathBuf};
+use std::{
+    path::{Path, PathBuf},
+    sync::LazyLock,
+};
 
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
 use url::Url;
@@ -11,7 +13,7 @@ use url::Url;
 use super::{DownloadRequest, Downloader, DownloaderReturn};
 use crate::downloaders::DownloadResult;
 
-static HANDLERS: Lazy<Vec<DownloadHandler>> = Lazy::new(|| {
+static HANDLERS: LazyLock<Vec<DownloadHandler>> = LazyLock::new(|| {
     vec![
         DownloadHandler::new(yams::YamsProvider),
         DownloadHandler::new(spotifydown::SpotifydownProvider),

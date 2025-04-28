@@ -25,7 +25,6 @@ addr = "0.15.6"
 url.workspace = true
 ipnet = "2.10.1"
 iprange = "0.6.7"
-once_cell.workspace = true
 dns-lookup = "2.0.4"
 filetime = "0.2.25"
 tracing.workspace = true

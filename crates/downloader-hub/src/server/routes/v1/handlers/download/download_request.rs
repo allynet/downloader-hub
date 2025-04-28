@@ -1,3 +1,5 @@
+use std::sync::OnceLock;
+
 use app_entities::{
     download_request, download_result,
     entity_meta::download_request::{
@@ -91,8 +93,7 @@ async fn request_info(
         let signature_duration = query
             .share_for_seconds
             .map(|x| {
-                static MAX_DURATION_SECONDS: once_cell::sync::OnceCell<i64> =
-                    once_cell::sync::OnceCell::new();
+                static MAX_DURATION_SECONDS: OnceLock<i64> = OnceLock::new();
                 let max =
                     *MAX_DURATION_SECONDS.get_or_init(|| chrono::Duration::days(7).num_seconds());
 

@@ -182,7 +182,6 @@ dependencies = [
  "language-tags",
  "mime2ext",
  "num_cpus",
- "once_cell",
  "percent-encoding",
  "rayon",
  "regex",
@@ -209,7 +208,6 @@ dependencies = [
  "clap",
  "clap_complete",
  "directories",
- "once_cell",
  "resolve-path",
  "serde",
  "serde_json",
@@ -248,7 +246,6 @@ dependencies = [
  "ipnet",
  "iprange",
  "mime",
- "once_cell",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -1401,7 +1398,6 @@ dependencies = [
  "hmac",
  "http-range-header",
  "listenfd",
- "once_cell",
  "sea-orm",
  "serde",
  "serde_json",
@@ -1431,7 +1427,6 @@ dependencies = [
  "dotenvy",
  "dptree",
  "futures",
- "once_cell",
  "parking_lot",
  "serde_json",
  "teloxide",
@@ -2970,9 +2965,6 @@ name = "once_cell"
 version = "1.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "945462a4b81e43c4e3ba96bd7b49d834c6f61198356aa858733bc4acf3cbe62e"
-dependencies = [
- "parking_lot_core",
-]
 
 [[package]]
 name = "option-ext"

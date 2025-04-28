@@ -4,19 +4,18 @@ pub mod ocr_image;
 pub mod remove_background;
 pub mod split_scenes;
 
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 
 use futures::{stream::FuturesUnordered, StreamExt};
-use once_cell::sync::Lazy;
 use tracing::trace;
 
 use super::{Action, ActionError, ActionRequest, ActionResult};
 
 pub type ActionEntry = Arc<dyn Action>;
 
-pub static ALL_ACTIONS: Lazy<Vec<ActionEntry>> = Lazy::new(all_actions);
+pub static ALL_ACTIONS: LazyLock<Vec<ActionEntry>> = LazyLock::new(all_actions);
 
-pub static AVAILABLE_ACTIONS: Lazy<Vec<ActionEntry>> = Lazy::new(available_actions);
+pub static AVAILABLE_ACTIONS: LazyLock<Vec<ActionEntry>> = LazyLock::new(available_actions);
 
 fn all_actions() -> Vec<ActionEntry> {
     vec![

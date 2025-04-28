@@ -1,8 +1,7 @@
-use std::string::ToString;
+use std::{string::ToString, sync::LazyLock};
 
 use app_config::{timeframe::Timeframe, Config};
 use http::{header, HeaderMap};
-use once_cell::sync::Lazy;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -14,14 +13,14 @@ use crate::{
     common::request::Client, downloaders::handlers::generic::Generic, extractors::ExtractedUrlInfo,
 };
 
-pub static URL_MATCH: Lazy<Regex> = Lazy::new(|| {
+pub static URL_MATCH: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
         r"^https?://(www\.)?(twitter|x)\.com/(?P<username>[^/]+)/status/(?P<status_id>[0-9]+)",
     )
     .expect("Invalid regex")
 });
 
-pub static MEDIA_URL_MATCH: Lazy<Regex> = Lazy::new(|| {
+pub static MEDIA_URL_MATCH: LazyLock<Regex> = LazyLock::new(|| {
     // https://pbs.twimg.com/media/FqPFEWYWYBQ5iG3?format=png&name=small
     Regex::new(r"^https?://pbs\.twimg\.com/media/").expect("Invalid regex")
 });

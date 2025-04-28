@@ -4,17 +4,16 @@ pub mod conditional;
 pub mod timeframe;
 pub mod validators;
 
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, sync::LazyLock};
 
 use clap::Parser;
 use cli::CliArgs;
 use common::DumpConfigType;
 use directories::ProjectDirs;
-use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use validator::Validate;
 
-static CONFIG: Lazy<Config> = Lazy::new(Config::new);
+static CONFIG: LazyLock<Config> = LazyLock::new(Config::new);
 
 pub static APPLICATION_NAME: &str = "downloader-hub";
 pub static ORGANIZATION_NAME: &str = "allypost";

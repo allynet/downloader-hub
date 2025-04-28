@@ -9,15 +9,14 @@ pub mod tiktok;
 pub mod tumblr;
 pub mod twitter;
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 use super::{ExtractInfoRequest, ExtractedInfo, Extractor};
 
 pub type ExtractorEntry = Arc<dyn Extractor + Sync + Send>;
 
-pub static AVAILABLE_EXTRACTORS: Lazy<Vec<ExtractorEntry>> = Lazy::new(available_extractors);
+pub static AVAILABLE_EXTRACTORS: LazyLock<Vec<ExtractorEntry>> =
+    LazyLock::new(available_extractors);
 
 #[must_use]
 pub fn available_extractors() -> Vec<ExtractorEntry> {

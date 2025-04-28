@@ -1,5 +1,6 @@
+use std::sync::LazyLock;
+
 use deadqueue::unlimited::Queue;
-use once_cell::sync::Lazy;
 use tracing::{debug, info, trace};
 
 pub mod processor;
@@ -11,7 +12,7 @@ use crate::{
     service::{download_request::DownloadRequestService, download_result::DownloadResultService},
 };
 
-pub static TASK_QUEUE: Lazy<Queue<Task>> = Lazy::new(Queue::new);
+pub static TASK_QUEUE: LazyLock<Queue<Task>> = LazyLock::new(Queue::new);
 
 pub struct TaskQueue;
 impl TaskQueue {

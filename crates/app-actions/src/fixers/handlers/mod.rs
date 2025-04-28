@@ -4,17 +4,15 @@ pub mod file_extensions;
 pub mod file_name;
 pub mod media_formats;
 
-use std::sync::Arc;
-
-use once_cell::sync::Lazy;
+use std::sync::{Arc, LazyLock};
 
 use crate::fixers::Fixer;
 
 pub type FixerInstance = Arc<dyn Fixer + Send + Sync>;
 
-pub static ALL_FIXERS: Lazy<Vec<FixerInstance>> = Lazy::new(all_fixers);
-pub static AVAILABLE_FIXERS: Lazy<Vec<FixerInstance>> = Lazy::new(available_fixers);
-pub static ENABLED_FIXERS: Lazy<Vec<FixerInstance>> = Lazy::new(enabled_fixers);
+pub static ALL_FIXERS: LazyLock<Vec<FixerInstance>> = LazyLock::new(all_fixers);
+pub static AVAILABLE_FIXERS: LazyLock<Vec<FixerInstance>> = LazyLock::new(available_fixers);
+pub static ENABLED_FIXERS: LazyLock<Vec<FixerInstance>> = LazyLock::new(enabled_fixers);
 
 fn all_fixers() -> Vec<FixerInstance> {
     vec![

@@ -1,8 +1,9 @@
+use std::sync::OnceLock;
+
 use app_config::Config;
 use app_helpers::encoding::{from_base64_padded, to_base64_padded};
 use chrono::{DateTime, Duration, Utc};
 use hmac::{Hmac, Mac};
-use once_cell::sync::OnceCell;
 use serde::{Deserialize, Serialize};
 use sha2::Sha384;
 use url::Url;
@@ -76,20 +77,18 @@ impl Signature {
     where
         TBase: AsRef<str>,
     {
-        static BASE: OnceCell<Url> = OnceCell::new();
-        let base_url = BASE
-            .get_or_try_init(|| {
-                let mut base_url = Config::global()
-                    .server()
-                    .app
-                    .public_url
-                    .trim_end_matches('/')
-                    .to_string();
-                base_url.push('/');
+        static BASE: OnceLock<Url> = OnceLock::new();
+        let base_url = BASE.get_or_init(|| {
+            let mut base_url = Config::global()
+                .server()
+                .app
+                .public_url
+                .trim_end_matches('/')
+                .to_string();
+            base_url.push('/');
 
-                Url::parse(&base_url)
-            })
-            .expect("Failed to get base url");
+            Url::parse(&base_url).expect("Failed to parse base url")
+        });
 
         let res = base_url
             .join(base.as_ref().trim_start_matches('/'))

@@ -10,10 +10,9 @@
 //! - Browser conformance tests at: <http://greenbytes.de/tech/tc2231/>
 //! - IANA assignment: <http://www.iana.org/assignments/cont-disp/cont-disp.xhtml>
 
-use std::{fmt, str::FromStr};
+use std::{fmt, str::FromStr, sync::LazyLock};
 
 use language_tags::LanguageTag;
-use once_cell::sync::Lazy;
 use percent_encoding::{AsciiSet, CONTROLS};
 use regex::Regex;
 use reqwest::header;
@@ -516,7 +515,7 @@ impl fmt::Display for DispositionParam {
         //
         // See also comments in test_from_raw_unnecessary_percent_decode.
 
-        static RE: Lazy<Regex> = Lazy::new(|| {
+        static RE: LazyLock<Regex> = LazyLock::new(|| {
             Regex::new("[\x00-\x08\x10-\x1F\x7F\"\\\\]").expect("Regex shouldn't fail")
         });
 
