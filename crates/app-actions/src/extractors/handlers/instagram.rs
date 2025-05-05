@@ -1,5 +1,6 @@
 use std::{result::Result, sync::LazyLock};
 
+use http::StatusCode;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use tracing::{debug, trace};
@@ -125,7 +126,19 @@ async fn get_api_response(post_id: &str) -> Result<InstagramXDTGraphMedia, Strin
         .body(graphql_variables)
         .send()
         .await
-        .map_err(|e| format!("Failed to send request to instagram API: {e:?}"))?
+        .map_err(|e| format!("Failed to send request to instagram API: {e:?}"))?;
+
+    trace!(?resp, "Got response from instagram API");
+
+    if resp.status() == StatusCode::FORBIDDEN {
+        return Err(
+            "Instagram API returned 403. This usually means that the request is being rate \
+             limited. Try again later."
+                .to_string(),
+        );
+    }
+
+    let resp = resp
         .json::<serde_json::Value>()
         .await
         .map_err(|e| format!("Failed to parse response from instagram API: {e:?}"))?;
