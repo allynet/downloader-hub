@@ -93,7 +93,7 @@ jobs:
         uses: containrrr/shoutrrr-action@v1
         with:
           url: ${{ secrets.SHOUTRRR_URL }}
-          title: "Failed to build ${{ github.repository }}"
+          title: "Failed to build `${{ github.repository }}`"
           message: |
             *Repo:* [${{ github.repository }}](https://github.com/${{ github.repository }})
 
@@ -120,7 +120,7 @@ jobs:
         uses: containrrr/shoutrrr-action@v1
         with:
           url: ${{ secrets.SHOUTRRR_URL }}
-          title: "Deployed ${{ github.repository }}"
+          title: "Deployed `${{ github.repository }}`"
           message: |
             *Repo:* [${{ github.repository }}](https://github.com/${{ github.repository }})
 
