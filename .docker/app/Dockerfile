@@ -103,31 +103,6 @@ RUN --mount=type=bind,target=.,rw cargo build \
 # Step 3 #
 ##########
 ##
-## Build imagemagick
-##
-FROM "${RUNNER_CONTAINER}" AS imagemagick-builder
-COPY ./.docker/app/packelf.sh /packelf.sh
-# Install imagemagick
-RUN \
-  apt-get update \
-  && apt-get install -y \
-  curl \
-  # Build latest imagemagick
-  && t=$(mktemp) \
-  && curl -sL 'https://dist.1-2.dev/imei.sh' -o "$t" \
-  && bash "$t" -- --ci \
-  && rm "$t" \
-  && mkdir /static \
-  # Pack dynamically linked magick into static binary via fun hacks
-  && /packelf.sh "$(which magick)" /static/magick \
-  ;
-
-
-
-##########
-# Step 4 #
-##########
-##
 ## Run the app in a configured environment
 ##
 FROM "${RUNNER_CONTAINER}" AS runner
@@ -141,6 +116,12 @@ RUN apt-get update && apt-get install -y \
   xz-utils \
   && rm -rf /var/lib/apt/lists/* \
   && echo "Done installing packages"
+# Install imagemagick
+RUN \
+  curl -sL 'https://dist.1-2.dev/imei.sh' \
+  | bash -s -- --ci \
+  && magick --version \
+  ;
 # Install latest ffmpeg
 ARG FFMPEG_DOWNLOAD_URL
 RUN cd "$(mktemp --directory)" && \
@@ -160,8 +141,6 @@ RUN mkdir -p /usr/share \
 COPY ./.docker/app/update_yt-dlp.sh /usr/bin/update_yt-dlp.sh
 RUN chmod a=rx /usr/bin/update_yt-dlp.sh
 RUN /usr/bin/update_yt-dlp.sh
-# Install imagemagick
-COPY --from=imagemagick-builder /static/magick /usr/local/bin/magick
 # Delete default ubuntu user
 RUN userdel --remove ubuntu; groupdel ubuntu; echo "Deleted default ubuntu user"
 # Create run user
