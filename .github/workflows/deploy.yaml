@@ -44,6 +44,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./.docker/app/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           pull: true
           tags: |
@@ -68,6 +69,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: ./.docker/app/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
           pull: true
           tags: |
