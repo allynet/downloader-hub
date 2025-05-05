@@ -1,10 +1,9 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Write};
 
 use app_config::Config;
 use app_helpers::file_type::{infer_file_type, mime};
 use reqwest::{multipart, Body};
 use serde::{Deserialize, Serialize};
-use std::fmt::Write;
 use tokio::fs::File;
 use tokio_util::codec::{BytesCodec, FramedRead};
 use tracing::trace;
