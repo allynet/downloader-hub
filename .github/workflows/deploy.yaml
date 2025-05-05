@@ -79,6 +79,8 @@ jobs:
           tags: |
             allypost/downloader-telegram-bot:latest
             allypost/downloader-telegram-bot:${{ github.sha }}
+          build-args: |
+            BINARY_NAME=downloader-telegram-bot
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
