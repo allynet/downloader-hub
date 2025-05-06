@@ -114,7 +114,7 @@ async fn get_api_response(post_id: &str) -> Result<InstagramXDTGraphMedia, Strin
 
         q.append_pair("variables", &query_variables_str);
         q.append_pair("server_timestamps", "true");
-        q.append_pair("doc_id", "8845758582119845");
+        q.append_pair("doc_id", "9510064595728286");
 
         q.finish()
     };
@@ -123,6 +123,7 @@ async fn get_api_response(post_id: &str) -> Result<InstagramXDTGraphMedia, Strin
     let resp = Client::base()?
         .post("https://www.instagram.com/graphql/query/")
         .header("Content-Type", "application/x-www-form-urlencoded")
+        .header("X-CSRFToken", app_helpers::id::time_id())
         .body(graphql_variables)
         .send()
         .await
