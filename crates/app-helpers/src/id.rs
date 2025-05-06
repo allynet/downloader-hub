@@ -5,8 +5,8 @@ use crate::encoding::to_base64;
 fn now_ns() -> u128 {
     time::SystemTime::now()
         .duration_since(time::UNIX_EPOCH)
-        .expect("Time went backwards")
-        .as_nanos()
+        .map(|x| x.as_nanos())
+        .unwrap_or(0)
 }
 
 #[must_use]
