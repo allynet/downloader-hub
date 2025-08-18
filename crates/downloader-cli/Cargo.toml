@@ -14,7 +14,7 @@ app-config = { workspace = true, features = ["cli"] }
 futures.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.18", features = [
+tracing-subscriber = { version = "0.3.19", features = [
     "env-filter",
     "json",
     "local-time",

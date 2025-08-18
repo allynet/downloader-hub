@@ -12,7 +12,7 @@ use tracing::{debug, field, trace, warn, Span};
 
 use crate::{
     bot::{helpers::status_message::StatusMessage, TelegramBot},
-    queue::common::file::{files_to_input_media_groups, MAX_PAYLOAD_SIZE_BYTES},
+    queue::common::file_group::{files_to_input_media_groups, MAX_PAYLOAD_SIZE_BYTES},
 };
 
 #[derive(Clone, Debug)]

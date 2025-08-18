@@ -15,21 +15,20 @@ app-helpers.workspace = true
 app-logger.workspace = true
 app-migration = { version = "*", path = "../app-migration" }
 app-tasks.workspace = true
-axum = { version = "0.7.7", features = ["macros", "multipart"] }
-axum-extra = { version = "0.9.4", features = [
+axum = { version = "0.8.4", features = ["macros", "multipart"] }
+axum-extra = { version = "0.10.1", features = [
     "erased-json",
     "form",
     "multipart",
     "typed-header",
 ] }
 chrono.workspace = true
-deadqueue = "0.2.4"
+deadqueue = "0.2.5"
 dotenvy = "0.15.7"
 futures.workspace = true
 hmac = "0.12.1"
-http-range-header = "0.4.1"
-listenfd = "1.0.1"
-sea-orm = { version = "1.1.0", features = [
+listenfd = "1.0.2"
+sea-orm = { version = "1.1.14", features = [
     "macros",
     "sqlx-postgres",
     "runtime-tokio-rustls",
@@ -38,13 +37,13 @@ sea-orm = { version = "1.1.0", features = [
 ] }
 serde.workspace = true
 serde_json.workspace = true
-sha2 = "0.10.8"
+sha2 = "0.10.9"
 thiserror.workspace = true
 tokio.workspace = true
-tower = "0.4.13"
-tower-http = { version = "0.5.2", features = ["full"] }
+tower = "0.5.2"
+tower-http = { version = "0.6.6", features = ["full"] }
 tracing.workspace = true
-ulid = { version = "1.1.3", features = ["postgres"] }
+ulid = { version = "1.2.1", features = ["postgres"] }
 url.workspace = true
 
 [lints]

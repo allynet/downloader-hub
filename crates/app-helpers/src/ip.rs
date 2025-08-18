@@ -38,9 +38,9 @@ pub fn url_resolves_to_valid_ip(url: &str) -> Result<Url, UrlIpValidationError> 
     };
 
     let url_ips = match url_host {
-        url::Host::Domain(domain) => {
-            lookup_host(domain).map_err(UrlIpValidationError::DnsLookup)?
-        }
+        url::Host::Domain(domain) => lookup_host(domain)
+            .map_err(UrlIpValidationError::DnsLookup)?
+            .collect(),
         url::Host::Ipv4(ip) => {
             vec![ip.into()]
         }

@@ -12,20 +12,19 @@ base64 = "0.22.1"
 app-config.workspace = true
 serde.workspace = true
 serde_json.workspace = true
-trash = "5.2.0"
-futures.workspace = true
+trash = "5.2.3"
 tokio.workspace = true
 thiserror.workspace = true
-tryhard = "0.5.1"
-infer = "0.16.0"
-tree_magic_mini = "3.1.6"
-file-format = { version = "0.25.0", features = ["reader"] }
+tryhard = "0.5.2"
+infer = "0.19.0"
+tree_magic_mini = "3.2.0"
+file-format = { version = "0.28.0", features = ["reader"] }
 mime = "0.3.17"
 addr = "0.15.6"
 url.workspace = true
-ipnet = "2.10.1"
+ipnet = "2.11.0"
 iprange = "0.6.7"
-dns-lookup = "2.0.4"
+dns-lookup = "2.1.0"
 filetime = "0.2.25"
 tracing.workspace = true
 
