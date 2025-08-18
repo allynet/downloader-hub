@@ -25,8 +25,10 @@ impl Extractor for Reddit {
     async fn extract_info(&self, request: &ExtractInfoRequest) -> Result<ExtractedInfo, String> {
         let url = {
             let mut x = request.url.clone();
-            let _ = x.set_host(Some("i.redd.it"));
-            x.set_query(None);
+            if x.query_pairs().all(|(k, _)| k != "s") {
+                let _ = x.set_host(Some("i.redd.it"));
+                x.set_query(None);
+            }
             x
         };
         let file_ext = url.path().split('.').next_back().unwrap_or_default();
