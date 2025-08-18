@@ -7,6 +7,7 @@ docker-compose.*.yaml
 compose.*.yaml
 
 /test-media/
+/dev/
 
 .env
 .env.*

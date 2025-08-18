@@ -169,14 +169,14 @@ impl DispositionParam {
     /// Returns `true` if the parameter is [`Name`](DispositionParam::Name).
     #[inline]
     #[must_use]
-    pub fn is_name(&self) -> bool {
+    pub const fn is_name(&self) -> bool {
         self.as_name().is_some()
     }
 
     /// Returns `true` if the parameter is [`Filename`](DispositionParam::Filename).
     #[inline]
     #[must_use]
-    pub fn is_filename(&self) -> bool {
+    pub const fn is_filename(&self) -> bool {
         self.as_filename().is_some()
     }
 
@@ -204,7 +204,7 @@ impl DispositionParam {
     /// Returns the name if applicable.
     #[inline]
     #[must_use]
-    pub fn as_name(&self) -> Option<&str> {
+    pub const fn as_name(&self) -> Option<&str> {
         match self {
             Self::Name(name) => Some(name.as_str()),
             _ => None,
@@ -214,7 +214,7 @@ impl DispositionParam {
     /// Returns the filename if applicable.
     #[inline]
     #[must_use]
-    pub fn as_filename(&self) -> Option<&str> {
+    pub const fn as_filename(&self) -> Option<&str> {
         match self {
             Self::Filename(filename) => Some(filename.as_str()),
             _ => None,

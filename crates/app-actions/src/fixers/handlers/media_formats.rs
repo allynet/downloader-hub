@@ -323,7 +323,7 @@ fn get_stream_of_type<'a>(
         .find(|s| s.codec_type.as_deref().is_some_and(|x| x == stream_type))
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 struct CodecHandler {
     pub can_handle: fn(&str, &Stream) -> bool,
     pub handle: fn(FfProbeResult, Stream) -> BoxFuture<'static, anyhow::Result<PathBuf>>,

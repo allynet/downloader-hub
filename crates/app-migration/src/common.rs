@@ -55,7 +55,7 @@ where
         parts
     });
 
-    format!("{}-{}", for_type, hash)
+    format!("{for_type}-{hash}")
 }
 
 pub fn generate_index<TTable, TColumn>(table: TTable, cols: Vec<TColumn>) -> IndexCreateStatement

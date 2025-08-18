@@ -55,12 +55,12 @@ impl TempFile {
         &self.path
     }
 
-    pub fn file_mut(&mut self) -> &mut File {
+    pub const fn file_mut(&mut self) -> &mut File {
         &mut self.file
     }
 
     #[allow(dead_code)]
-    pub fn no_delete_on_drop(&mut self) -> &mut Self {
+    pub const fn no_delete_on_drop(&mut self) -> &mut Self {
         self.delete_on_drop = false;
         self
     }

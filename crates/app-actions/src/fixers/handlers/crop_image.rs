@@ -50,7 +50,8 @@ impl Fixer for CropImage {
             path.with_file_name(file_name)
         };
 
-        let crop_filter = CropFilter::from_image_files(&[input_file_path.clone()]).await?;
+        let crop_filter =
+            CropFilter::from_image_files(std::slice::from_ref(input_file_path)).await?;
 
         debug!(?crop_filter, "Got crop filter");
 

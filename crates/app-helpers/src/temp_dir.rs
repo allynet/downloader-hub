@@ -61,7 +61,7 @@ impl TempDir {
     }
 
     #[allow(dead_code)]
-    pub fn no_delete_on_drop(&mut self) -> &mut Self {
+    pub const fn no_delete_on_drop(&mut self) -> &mut Self {
         self.delete_on_drop = false;
         self
     }
