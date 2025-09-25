@@ -103,7 +103,8 @@ impl Generic {
             _ => "",
         };
 
-        let extension = mime2ext(mime_type).map_or("unknown".to_string(), |x| (*x).to_string());
+        let extension =
+            mime2ext(mime_type).map_or_else(|| "unknown".to_string(), |x| (*x).to_string());
 
         debug!(?extension, "Got extension");
 
