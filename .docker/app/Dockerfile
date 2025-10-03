@@ -149,6 +149,8 @@ ARG RUN_USER_ID
 ARG RUN_GROUP_ID
 RUN groupadd --gid "${RUN_GROUP_ID}" "${RUN_USERNAME}"
 RUN useradd --create-home --uid "${RUN_USER_ID}" --gid "${RUN_GROUP_ID}" "${RUN_USERNAME}"
+# Set yt-dlp owner group to the run user
+RUN chgrp "${RUN_USERNAME}" /usr/local/bin/yt-dlp
 # Install app
 ARG BINARY_NAME
 COPY --from=builder "/${BINARY_NAME}" /usr/local/bin/
