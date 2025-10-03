@@ -10,10 +10,10 @@ license.workspace = true
 anyhow.workspace = true
 app-actions.workspace = true
 app-config = { workspace = true, features = ["server"] }
-app-entities = { version = "*", path = "../app-entities" }
+app-entities = { version = "*", path = "../../crates/app-entities" }
 app-helpers.workspace = true
 app-logger.workspace = true
-app-migration = { version = "*", path = "../app-migration" }
+app-migration = { version = "*", path = "../../crates/app-migration" }
 app-tasks.workspace = true
 axum = { version = "0.8.4", features = ["macros", "multipart"] }
 axum-extra = { version = "0.10.1", features = [

@@ -19,6 +19,7 @@ dev-watch package *args:
         --clear \
         --quiet \
         --watch './crates' \
+        --watch './bins' \
         --ignore 'crates/app-migration/**/*' \
         --exec 'run --target "{{rust_target}}" --package "{{package}}" -- {{args}}' \
 
@@ -34,6 +35,7 @@ dev-watch-build package:
         --clear \
         --quiet \
         --watch './crates' \
+        --watch './bins' \
         --ignore 'crates/app-migration/**/*' \
         --exec 'build --target "{{rust_target}}" --package "{{package}}"' \
 
