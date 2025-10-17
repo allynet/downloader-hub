@@ -1,28 +1,10 @@
-use std::{
-    env,
-    path::{Path, PathBuf},
-};
+use std::path::{Path, PathBuf};
 
 use clap::{Args, ValueHint};
-use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use url::Url;
 use validator::Validate;
 
-use crate::{
-    timeframe::Timeframe,
-    validators::{
-        file::{validate_is_file, value_parser_parse_valid_file},
-        url::{
-            validate_is_absolute_url, value_parser_parse_absolute_url,
-            value_parser_parse_absolute_url_as_url,
-        },
-    },
-};
-
-pub static APPLICATION_NAME: &str = "downloader-hub";
-pub static ORGANIZATION_NAME: &str = "allypost";
-pub static ORGANIZATION_QUALIFIER: &str = "net";
+use crate::validators::file::{validate_is_file, value_parser_parse_valid_file};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Args, Validate)]
 #[allow(clippy::struct_field_names)]
@@ -129,76 +111,5 @@ impl ProgramPathConfig {
             .or_else(|| which::which("magick").ok());
 
         self
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Args, Validate)]
-#[clap(next_help_heading = Some("External endpoints/APIs"))]
-pub struct EndpointConfig {
-    /// The base URL for the Twitter screenshot API.
-    #[arg(long, default_value = "https://twitter.igr.ec", env = "DOWNLOADER_HUB_ENDPOINT_TWITTER_SCREENSHOT", value_hint = ValueHint::Url, value_parser = value_parser_parse_absolute_url())]
-    #[validate(custom(function = "validate_is_absolute_url"))]
-    pub twitter_screenshot_base_url: String,
-
-    /// The base URL for the OCR API.
-    #[arg(long, env = "DOWNLOADER_HUB_ENDPOINT_OCR_API", value_hint = ValueHint::Url, value_parser = value_parser_parse_absolute_url_as_url())]
-    pub ocr_api_base_url: Option<Url>,
-}
-impl EndpointConfig {
-    #[must_use]
-    pub fn ocr_api_url(&self, path: &str) -> Option<Url> {
-        self.ocr_api_base_url
-            .as_ref()
-            .and_then(|x| x.join(path.trim_start_matches('/')).ok())
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Args, Validate)]
-#[clap(next_help_heading = Some("Task options"))]
-pub struct TaskConfig {
-    /// The interval at which the bot should check for updates to the yt-dlp binary.
-    /// If not set, the bot will not check for updates.
-    ///
-    /// The value represents a duration in seconds, minutes, hours, days, weeks, or months.
-    /// Special events are ignored, eg. leap years, daylight savings, etc.
-    /// `minute` is 60 seconds, `hour` is 60 minutes, `day` is 24 hours, `week` is 7 days, `month` is 30 days.
-    /// Eg. 1d, 2 weeks, 3 months, 4h, 5mins, 6s
-    #[clap(short, long, value_parser = Timeframe::parse_str, env = "DOWNLOADER_HUB_YT_DLP_UPDATE_INTERVAL")]
-    pub yt_dlp_update_interval: Option<Timeframe>,
-}
-
-pub struct ProjectConfig;
-impl ProjectConfig {
-    #[must_use]
-    #[inline]
-    pub fn config_dir() -> Option<PathBuf> {
-        Self::get_project_dir().map(|x| x.config_dir().into())
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn get_config_dir(&self) -> Option<PathBuf> {
-        Self::config_dir()
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn cache_dir() -> PathBuf {
-        Self::get_project_dir().map_or_else(
-            || env::temp_dir().join(APPLICATION_NAME),
-            |x| x.cache_dir().into(),
-        )
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn get_cache_dir(&self) -> PathBuf {
-        Self::cache_dir()
-    }
-
-    #[must_use]
-    #[inline]
-    pub fn get_project_dir() -> Option<ProjectDirs> {
-        ProjectDirs::from(ORGANIZATION_QUALIFIER, ORGANIZATION_NAME, APPLICATION_NAME)
     }
 }
