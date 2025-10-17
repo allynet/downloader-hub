@@ -17,7 +17,7 @@ impl TempFile {
     where
         T: Into<OsString> + std::marker::Send,
     {
-        let tmp_dir = HelpersConfig::global().get_cache_dir();
+        let tmp_dir = HelpersConfig::cache_dir();
 
         if !tmp_dir.exists() {
             std::fs::create_dir_all(&tmp_dir)?;

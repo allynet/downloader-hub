@@ -1,16 +1,22 @@
 use std::ops::Deref;
 
-use app_config::GlobalConfig;
+use app_config::{common, GlobalConfig};
 
 #[derive(Debug, Clone, GlobalConfig)]
-pub struct TaskConfig {
-    pub conf: app_config::common::TaskConfig,
+pub(crate) struct TaskConfig {
+    pub conf: common::TaskConfig,
 }
 
 impl Deref for TaskConfig {
-    type Target = app_config::common::TaskConfig;
+    type Target = common::TaskConfig;
 
     fn deref(&self) -> &Self::Target {
         &self.conf
     }
+}
+
+pub fn init(task: common::TaskConfig) -> Result<(), String> {
+    TaskConfig::init(TaskConfig { conf: task })?;
+
+    Ok(())
 }

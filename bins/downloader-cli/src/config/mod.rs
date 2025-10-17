@@ -45,10 +45,7 @@ impl Config {
 
         {
             let parsed = parsed.clone();
-            app_actions::config::ActionsConfig::init(app_actions::config::ActionsConfig {
-                endpoint: parsed.endpoint,
-                dependency_paths: parsed.dependency_paths,
-            })?;
+            app_actions::config::init(parsed.endpoint, parsed.dependency_paths)?;
         }
 
         Self::init(parsed)

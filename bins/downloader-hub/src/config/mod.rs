@@ -41,24 +41,17 @@ impl Config {
 
         {
             let parsed = parsed.clone();
-            app_actions::config::ActionsConfig::init(app_actions::config::ActionsConfig {
-                endpoint: parsed.endpoint,
-                dependency_paths: parsed.dependency_paths,
-            })?;
+            app_actions::config::init(parsed.endpoint, parsed.dependency_paths)?;
         }
 
         {
             let parsed = parsed.clone();
-            app_helpers::config::HelpersConfig::init(app_helpers::config::HelpersConfig {
-                dependency_paths: parsed.dependency_paths,
-            })?;
+            app_helpers::config::init(parsed.dependency_paths)?;
         }
 
         {
             let parsed = parsed.clone();
-            app_tasks::config::TaskConfig::init(app_tasks::config::TaskConfig {
-                conf: parsed.task,
-            })?;
+            app_tasks::config::init(parsed.task)?;
         }
 
         Self::init(parsed)

@@ -7,7 +7,7 @@ use app_config::{
 use validator::Validate;
 
 #[derive(Debug, Clone, Default, Validate, GlobalConfig)]
-pub struct ActionsConfig {
+pub(crate) struct ActionsConfig {
     #[validate(nested)]
     pub endpoint: EndpointConfig,
 
@@ -33,4 +33,13 @@ impl ActionsConfig {
     pub fn cache_dir() -> PathBuf {
         ProjectConfig::cache_dir()
     }
+}
+
+pub fn init(endpoint: EndpointConfig, dependency_paths: ProgramPathConfig) -> Result<(), String> {
+    ActionsConfig::init(ActionsConfig {
+        endpoint,
+        dependency_paths,
+    })?;
+
+    Ok(())
 }
