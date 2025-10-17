@@ -1,10 +1,12 @@
 pub(crate) mod bot;
+pub mod config;
 pub(crate) mod queue;
 
-use app_config::Config;
 use app_tasks::TaskRunner;
 use queue::TaskQueueProcessor;
 use tracing::{debug, error};
+
+use crate::config::Config;
 
 #[tokio::main]
 async fn main() {
@@ -25,7 +27,7 @@ async fn main() {
         }
     }
 
-    debug!(config = ?*Config::global(), "Running with config");
+    debug!(config = ?*Config::init_parsed().expect("Failed to init config"), "Running with config");
 
     tokio::task::spawn(TaskQueueProcessor::run());
     tokio::task::spawn(TaskRunner::run());

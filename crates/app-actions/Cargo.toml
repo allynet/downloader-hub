@@ -34,7 +34,8 @@ tracing.workspace = true
 typetag = "0.2.20"
 unicode-segmentation = "1.12.0"
 url.workspace = true
-zip = { version = "4.3.0", default-features = false, features = ["aes-crypto", "deflate", "deflate64", "lzma", "time", "zstd"] }
+validator.workspace = true
+zip = { version = "6.0.0", default-features = false, features = ["aes-crypto", "deflate", "deflate64", "lzma", "time", "zstd"] }
 
 [lints]
 workspace = true

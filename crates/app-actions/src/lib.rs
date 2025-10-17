@@ -5,6 +5,7 @@ use tracing::{debug, info_span, Instrument};
 
 pub mod actions;
 pub(crate) mod common;
+pub mod config;
 pub mod downloaders;
 pub mod extractors;
 pub mod fixers;

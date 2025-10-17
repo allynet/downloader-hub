@@ -1,7 +1,23 @@
-use std::env;
+use std::{env, sync::OnceLock};
 
-use tracing::Level;
+use tracing::{warn, Level};
 use tracing_subscriber::{filter::Directive, fmt, prelude::*, EnvFilter};
+
+#[allow(clippy::type_complexity)]
+static RELOAD_HANDLE: OnceLock<
+    tracing_subscriber::reload::Handle<
+        EnvFilter,
+        tracing_subscriber::layer::Layered<
+            fmt::Layer<
+                tracing_subscriber::Registry,
+                fmt::format::DefaultFields,
+                fmt::format::Format,
+                fn() -> std::io::Stderr,
+            >,
+            tracing_subscriber::Registry,
+        >,
+    >,
+> = OnceLock::new();
 
 pub const COMPONENT_LEVELS: &[(&str, Level)] = &[
     // Binaries
@@ -72,9 +88,72 @@ where
         base_level = base_level.add_directive(d);
     }
 
+    let (base_level, reload_handle) = tracing_subscriber::reload::Layer::new(base_level);
+    RELOAD_HANDLE
+        .set(reload_handle)
+        .expect("Logger was already initialized");
+
     tracing_subscriber::registry()
-        .with(fmt::layer())
+        .with(fmt::layer().with_writer(std::io::stderr as fn() -> std::io::Stderr))
         .with(base_level)
         .try_init()
         .expect("setting default subscriber failed");
+}
+
+pub fn set_log_level(log_level: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let mut base_level = EnvFilter::builder()
+        .with_default_directive(Level::WARN.into())
+        .parse_lossy("warn");
+
+    let set_directives = log_level
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .filter_map(|s| match s.parse() {
+            Ok(d) => Some(d),
+            Err(err) => {
+                warn!(directive = ?s, ?err, "Failed to parse log level directive");
+                None
+            }
+        })
+        .collect::<Vec<Directive>>();
+
+    for d in set_directives {
+        base_level = base_level.add_directive(d);
+    }
+
+    let reload_handle = RELOAD_HANDLE.get().expect("Logger was not initialized");
+
+    reload_handle
+        .modify(|filter| *filter = base_level)
+        .map_err(|e| format!("Failed to set log level: {:?}", e).into())
+}
+
+pub fn update_log_level(log_level: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let default_levels = COMPONENT_LEVELS.iter().map(|(k, v)| {
+        if k.is_empty() {
+            v.to_string()
+        } else {
+            format!("{}={}", k, v)
+        }
+    });
+
+    let current_levels = RELOAD_HANDLE
+        .get()
+        .expect("Logger was not initialized")
+        .clone_current()
+        .expect("Failed to clone current log level")
+        .to_string();
+    let current_levels = current_levels
+        .split(',')
+        .map(std::string::ToString::to_string);
+
+    let new_levels = log_level.split(',').map(std::string::ToString::to_string);
+
+    let levels = default_levels
+        .chain(current_levels)
+        .chain(new_levels)
+        .collect::<Vec<_>>()
+        .join(",");
+
+    set_log_level(&levels)
 }

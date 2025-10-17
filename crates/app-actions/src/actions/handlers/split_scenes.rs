@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
-use app_config::Config;
-use app_helpers::temp_dir::TempDir;
+use app_helpers::{config::HelpersConfig, temp_dir::TempDir};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 use tokio::{fs, process::Command};
@@ -19,8 +18,7 @@ impl Action for SplitScenes {
     }
 
     async fn can_run(&self) -> bool {
-        Config::global()
-            .dependency_paths
+        HelpersConfig::dependency_paths()
             .scenedetect_path()
             .is_some()
     }
@@ -74,7 +72,7 @@ impl SplitVideoConfig {
 }
 
 async fn split_into_scenes(config: SplitVideoConfig) -> Result<Vec<PathBuf>, ActionError> {
-    let scenedetect_path = match Config::global().dependency_paths.scenedetect_path() {
+    let scenedetect_path = match HelpersConfig::dependency_paths().scenedetect_path() {
         Some(x) => x,
         None => return Err(SplitScenesError::ScenedetectNotFound.into()),
     };

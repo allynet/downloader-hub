@@ -4,19 +4,21 @@ use std::{
     process::Stdio,
 };
 
-use app_config::Config;
 use app_helpers::{ffprobe, temp_dir::TempDir, trash::move_to_trash};
 use serde::{Deserialize, Serialize};
 use tokio::{fs, process::Command};
 use tracing::{debug, trace, warn};
 
-use crate::fixers::{
-    common::{
-        command::CmdError,
-        crop_filter::{CropError, CropFilter},
-        FixRequest, FixResult,
+use crate::{
+    config::ActionsConfig,
+    fixers::{
+        common::{
+            command::CmdError,
+            crop_filter::{CropError, CropFilter},
+            FixRequest, FixResult,
+        },
+        Fixer, FixerReturn, IntoFixerReturn,
     },
-    Fixer, FixerReturn, IntoFixerReturn,
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -26,8 +28,7 @@ pub struct CropVideoBars;
 #[typetag::serde]
 impl Fixer for CropVideoBars {
     fn can_run(&self) -> bool {
-        Config::global()
-            .dependency_paths
+        ActionsConfig::dependency_paths()
             .imagemagick_path()
             .is_some()
     }
@@ -124,7 +125,7 @@ async fn do_auto_crop_video(file_path: &Path) -> Result<PathBuf, CropError> {
 
     trace!(?new_filename, "Using new filename for file");
 
-    let mut cmd = Command::new(Config::global().dependency_paths.ffmpeg_path());
+    let mut cmd = Command::new(ActionsConfig::dependency_paths().ffmpeg_path());
     let res = cmd
         .arg("-y")
         .args(["-loglevel", "panic"])
@@ -164,7 +165,7 @@ async fn generate_crop_filter(file_path: &Path) -> Result<CropFilter, CropError>
     };
     trace!(?tmp_dir, "Created temp dir to write frames to");
 
-    let mut cmd = Command::new(Config::global().dependency_paths.ffmpeg_path());
+    let mut cmd = Command::new(ActionsConfig::dependency_paths().ffmpeg_path());
     let res = cmd
         .arg("-y")
         .arg("-i")

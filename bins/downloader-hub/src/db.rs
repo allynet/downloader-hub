@@ -1,9 +1,10 @@
 use std::{sync::OnceLock, time::Duration};
 
-use app_config::Config;
 use app_migration::MigratorTrait;
 use sea_orm::{Database, DatabaseConnection};
 use tracing::{debug, error, info, trace};
+
+use crate::config::Config;
 
 static APP_DB: OnceLock<AppDb> = OnceLock::new();
 
@@ -20,7 +21,7 @@ impl AppDb {
 
         debug!("Initializing database");
 
-        let mut opt = sea_orm::ConnectOptions::new(&Config::global().server().database.url);
+        let mut opt = sea_orm::ConnectOptions::new(&Config::server().database.url);
         opt.max_connections(50)
             .connect_timeout(Duration::from_secs(5))
             .acquire_timeout(Duration::from_secs(5))

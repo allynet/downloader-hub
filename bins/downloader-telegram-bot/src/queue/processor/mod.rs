@@ -1,11 +1,10 @@
 mod handlers;
 
-use app_config::Config;
 use handlers::HandlerError;
 use tracing::{debug, error, field, info, info_span, warn, Instrument, Span};
 
 use super::task::Task;
-use crate::queue::TASK_QUEUE;
+use crate::{config::Config, queue::TASK_QUEUE};
 
 const MAX_RETRIES: u32 = 5;
 
@@ -48,10 +47,7 @@ impl TaskQueueProcessor {
                      owner</a> and forward them this message",
                     id = task_id,
                     err = e,
-                    owner = Config::global()
-                        .telegram_bot()
-                        .owner_link()
-                        .unwrap_or_default(),
+                    owner = Config::bot().owner_link().unwrap_or_default(),
                 );
                 let res = status_message.update_message(&text).await;
                 if let Err(e) = res {
@@ -73,10 +69,7 @@ async fn handle_task(task: &Task) {
             let text = format!(
                 "Couln't process the request, no handler found.\n\nPlease contact the <a \
                  href=\"{owner}\">bot owner</a> and forward them this message",
-                owner = Config::global()
-                    .telegram_bot()
-                    .owner_link()
-                    .unwrap_or_default(),
+                owner = Config::bot().owner_link().unwrap_or_default(),
             );
 
             task.update_status_message(&text).await;

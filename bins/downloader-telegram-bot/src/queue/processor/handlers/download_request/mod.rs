@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use app_actions::{download_file, fix_file};
-use app_config::Config;
 use app_helpers::temp_dir::TempDir;
 use futures::{stream::FuturesUnordered, StreamExt};
 use teloxide::types::Message;
@@ -9,9 +8,12 @@ use tracing::{debug, info, trace};
 use url::Url;
 
 use super::{Handler, HandlerError, HandlerReturn};
-use crate::queue::{
-    common::{file::FileId, urls::urls_in_message},
-    task::{Task, TaskInfo},
+use crate::{
+    config::Config,
+    queue::{
+        common::{file::FileId, urls::urls_in_message},
+        task::{Task, TaskInfo},
+    },
 };
 
 #[derive(Debug)]
@@ -71,7 +73,7 @@ impl Handler for DownloadRequestHandler {
         debug!("Fixed files");
         trace!(?fixed_file_paths, "Fixed files");
 
-        if let Some(owner_id) = Config::global().telegram_bot().owner_id {
+        if let Some(owner_id) = Config::bot().owner_id {
             if msg.from.as_ref().is_some_and(|user| user.id.0 == owner_id) {
                 task.update_status_message("Copying files to download directory...")
                     .await;
@@ -96,7 +98,7 @@ impl Handler for DownloadRequestHandler {
 
 #[tracing::instrument(skip_all)]
 async fn copy_files_to_save_dir(fixed_file_paths: Vec<PathBuf>) -> Result<(), HandlerError> {
-    let download_dir = match Config::global().telegram_bot().owner_download_dir.as_ref() {
+    let download_dir = match Config::bot().owner_download_dir.as_ref() {
         Some(x) => x,
         None => return Ok(()),
     };

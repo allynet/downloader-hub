@@ -1,8 +1,9 @@
 use std::{collections::HashMap, io, num, path::Path, process, time};
 
-use app_config::Config;
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
+
+use crate::config::HelpersConfig;
 
 pub fn ffprobe(path: impl AsRef<Path>) -> Result<FfProbeResult, FfProbeError> {
     ffprobe_config(
@@ -34,7 +35,7 @@ where
 {
     let path = path.as_ref();
 
-    let ffprobe_path = Config::global().dependency_paths.ffprobe_path();
+    let ffprobe_path = HelpersConfig::dependency_paths().ffprobe_path();
     let mut cmd = Command::new(ffprobe_path);
     {
         cmd.args(["-v", "quiet"])
@@ -64,7 +65,7 @@ pub fn ffprobe_config(
 ) -> Result<FfProbeResult, FfProbeError> {
     let path = path.as_ref();
 
-    let ffprobe_path = Config::global().dependency_paths.ffprobe_path();
+    let ffprobe_path = HelpersConfig::dependency_paths().ffprobe_path();
     let mut cmd = process::Command::new(ffprobe_path);
     {
         cmd.args(["-v", "quiet"])

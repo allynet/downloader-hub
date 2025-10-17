@@ -1,6 +1,6 @@
 use std::{string::ToString, sync::LazyLock};
 
-use app_config::{timeframe::Timeframe, Config};
+use app_config::timeframe::Timeframe;
 use http::{header, HeaderMap};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
@@ -10,7 +10,8 @@ use url::{form_urlencoded, Url};
 
 use super::{ExtractInfoRequest, ExtractedInfo, Extractor};
 use crate::{
-    common::request::Client, downloaders::handlers::generic::Generic, extractors::ExtractedUrlInfo,
+    common::request::Client, config::ActionsConfig, downloaders::handlers::generic::Generic,
+    extractors::ExtractedUrlInfo,
 };
 
 pub static URL_MATCH: LazyLock<Regex> = LazyLock::new(|| {
@@ -87,7 +88,7 @@ impl Extractor for Twitter {
 impl Twitter {
     #[must_use]
     pub fn screenshot_tweet_url(&self, url: &str) -> String {
-        let endpoint = &Config::global().endpoint.twitter_screenshot_base_url;
+        let endpoint = &ActionsConfig::endpoints().twitter_screenshot_base_url;
 
         format!(
             "{}/{}",

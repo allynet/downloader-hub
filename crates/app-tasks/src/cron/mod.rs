@@ -1,17 +1,16 @@
-use app_config::Config;
 use tracing::{debug, error, info, info_span, Instrument, Span};
+
+use crate::config::TaskConfig;
 
 pub mod tasks;
 
 #[tracing::instrument(name = "cron", skip_all)]
 pub fn spawn() {
     info!("Spawning cron tasks");
-    let config = Config::global();
-    let task_config = &config.task;
 
     let span = info_span!("tasks");
     let _span = span.enter();
-    if let Some(yt_dlp_update_interval) = task_config.yt_dlp_update_interval {
+    if let Some(yt_dlp_update_interval) = TaskConfig::global().yt_dlp_update_interval {
         debug!(interval = ?yt_dlp_update_interval, "Spawning yt-dlp update task");
         tokio::task::spawn(
             async move {

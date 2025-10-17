@@ -1,12 +1,13 @@
-use app_config::Config;
 use app_tasks::TaskRunner;
 use tracing::{debug, error};
 
 use crate::{
+    config::Config,
     db::AppDb,
     queue::{processor::TaskQueueProcessor, TaskQueue},
 };
 
+mod config;
 mod db;
 mod queue;
 mod server;
@@ -15,6 +16,8 @@ mod service;
 #[tokio::main]
 async fn main() {
     let loaded_dotenv = dotenvy::dotenv();
+
+    Config::init_parsed().expect("Failed to initialize config");
 
     app_logger::init();
 
