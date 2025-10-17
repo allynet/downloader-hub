@@ -1,7 +1,6 @@
 use std::path::{Path, PathBuf};
 
 use anyhow::anyhow;
-use app_config::Config;
 use app_helpers::{
     ffprobe::{self, FfProbeResult, Stream},
     id::time_thread_id,
@@ -15,9 +14,12 @@ use thiserror::Error;
 use tokio::{fs, process::Command};
 use tracing::{debug, error, trace};
 
-use crate::fixers::{
-    common::{FixRequest, FixResult, FixerError},
-    Fixer, FixerReturn, IntoFixerReturn,
+use crate::{
+    config::ActionsConfig,
+    fixers::{
+        common::{FixRequest, FixResult, FixerError},
+        Fixer, FixerReturn, IntoFixerReturn,
+    },
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -174,9 +176,7 @@ async fn transcode_media_into(
     let to_extension = to_format.extension;
 
     let cache_folder = TempDir::absolute(
-        Config::global()
-            .get_cache_dir()
-            .join(format!("transcode-{}", time_thread_id())),
+        ActionsConfig::cache_dir().join(format!("transcode-{}", time_thread_id())),
     )
     .map_err(|e| anyhow!("Failed to create temporary directory: {e:?}"))?;
 
@@ -205,7 +205,7 @@ async fn transcode_media_into(
         to = cache_to_path.file_name(),
     );
 
-    let ffmpeg_path = Config::global().dependency_paths.ffmpeg_path();
+    let ffmpeg_path = ActionsConfig::dependency_paths().ffmpeg_path();
     trace!("`ffmpeg' binary: {ffmpeg_path:?}");
     let mut cmd = Command::new(ffmpeg_path);
     let mut cmd = cmd

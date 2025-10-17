@@ -1,6 +1,5 @@
 use std::{net::SocketAddr, sync::LazyLock, time::Duration};
 
-use app_config::Config;
 use axum::{
     http::{header, HeaderValue, Request},
     middleware,
@@ -21,7 +20,7 @@ use tower_http::{
 use tracing::{debug, field, info, trace, Span};
 
 use self::app_middleware::auth::CurrentUser;
-use crate::db::AppDb;
+use crate::{config::Config, db::AppDb};
 
 pub mod app_helpers;
 mod app_middleware;
@@ -42,7 +41,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error>> {
     let listener = match listenfd.take_tcp_listener(0)? {
         Some(listener) => TcpListener::from_std(listener).expect("Failed to create listener"),
         None => {
-            let server_config = &Config::global().server().run;
+            let server_config = &Config::server().run;
             let host = server_config.host.clone();
             let port = server_config.port;
 

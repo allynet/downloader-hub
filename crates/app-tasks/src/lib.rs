@@ -2,6 +2,8 @@ use tracing::error;
 
 pub(crate) mod cron;
 
+pub mod config;
+
 pub struct TaskRunner;
 
 impl TaskRunner {

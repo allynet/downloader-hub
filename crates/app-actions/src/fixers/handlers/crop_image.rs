@@ -1,11 +1,13 @@
-use app_config::Config;
 use app_helpers::{file_type, trash::move_to_trash};
 use serde::{Deserialize, Serialize};
 use tokio::process::Command;
 use tracing::{debug, warn};
 
-use crate::fixers::{
-    common::crop_filter::CropFilter, FixRequest, FixResult, Fixer, FixerError, FixerReturn,
+use crate::{
+    config::ActionsConfig,
+    fixers::{
+        common::crop_filter::CropFilter, FixRequest, FixResult, Fixer, FixerError, FixerReturn,
+    },
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -15,8 +17,7 @@ pub struct CropImage;
 #[typetag::serde]
 impl Fixer for CropImage {
     fn can_run(&self) -> bool {
-        Config::global()
-            .dependency_paths
+        ActionsConfig::dependency_paths()
             .imagemagick_path()
             .is_some()
     }
@@ -57,8 +58,7 @@ impl Fixer for CropImage {
 
         let mut cmd = {
             let mut cmd = Command::new(
-                Config::global()
-                    .dependency_paths
+                ActionsConfig::dependency_paths()
                     .imagemagick_path()
                     .expect("Imagemagick not found"),
             );

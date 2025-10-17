@@ -10,11 +10,13 @@ license.workspace = true
 
 [dependencies]
 app-actions.workspace = true
-app-config = { workspace = true, features = ["cli"] }
+app-config.workspace = true
+clap.workspace = true
 futures.workspace = true
+serde.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-tracing-subscriber = { version = "0.3.19", features = [
+tracing-subscriber = { version = "0.3.20", features = [
     "env-filter",
     "json",
     "local-time",
@@ -22,6 +24,7 @@ tracing-subscriber = { version = "0.3.19", features = [
     "parking_lot",
 ] }
 url.workspace = true
+validator.workspace = true
 
 [lints]
 workspace = true

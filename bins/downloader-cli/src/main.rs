@@ -7,17 +7,20 @@ use app_actions::{
     },
     download_file, fix_file,
 };
-use app_config::Config;
 use futures::{stream::FuturesUnordered, StreamExt};
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::{filter::LevelFilter, util::SubscriberInitExt};
+
+use crate::config::Config;
+
+mod config;
 
 #[tokio::main]
 #[allow(clippy::too_many_lines)]
 async fn main() {
     init_log();
 
-    let config = Config::global();
+    let config = Config::init_parsed().expect("Failed to init config");
 
     debug!(config = ?*config, "Running with config");
 
@@ -27,7 +30,7 @@ async fn main() {
     let files = get_explicit_files();
     let mut files = print_errors("files", files);
 
-    let cli_config = config.cli();
+    let cli_config = &config.run;
 
     for x in &cli_config.entries_group.urls_or_files {
         let mut errs = vec![];
@@ -195,7 +198,7 @@ fn print_errors<T: Sized>(name: &str, maybe_errors: Vec<Result<T, String>>) -> V
 
 fn get_explicit_urls() -> Vec<Result<url::Url, String>> {
     Config::global()
-        .cli()
+        .run
         .entries_group
         .urls
         .iter()
@@ -212,8 +215,7 @@ fn parse_url(u: &str) -> Result<url::Url, String> {
 }
 
 fn get_explicit_split_files() -> Vec<Result<PathBuf, String>> {
-    Config::global()
-        .cli()
+    Config::run()
         .entries_group
         .split_files
         .iter()
@@ -226,8 +228,7 @@ fn get_explicit_split_files() -> Vec<Result<PathBuf, String>> {
 }
 
 fn get_explicit_files() -> Vec<Result<PathBuf, String>> {
-    Config::global()
-        .cli()
+    Config::run()
         .entries_group
         .files
         .iter()

@@ -1,13 +1,12 @@
 use std::string::ToString;
 
-use app_config::Config;
 use app_entities::{client, entity_meta::common::path::AppPath};
 use axum::{extract::Request, http};
 use sea_orm::prelude::*;
 use serde::Deserialize;
 use tracing::trace;
 
-use crate::db::AppDb;
+use crate::{config::Config, db::AppDb};
 
 const ADMIN_ID: i32 = 0;
 
@@ -91,7 +90,7 @@ impl AuthorizationSchema {
                 Some(res)
             }
 
-            Self::AdminKey(ref key) if Config::global().server().run.admin_key == *key => {
+            Self::AdminKey(ref key) if Config::server().run.admin_key == *key => {
                 Some(CurrentUser {
                     id: ADMIN_ID,
                     name: "admin".to_string(),

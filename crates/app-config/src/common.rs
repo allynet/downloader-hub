@@ -1,13 +1,15 @@
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
-use clap::{Args, CommandFactory, ValueEnum, ValueHint};
-use clap_complete::Shell;
+use clap::{Args, ValueHint};
+use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use url::Url;
-use validator::{Validate, ValidationError};
+use validator::Validate;
 
 use crate::{
-    cli::CliArgs,
     timeframe::Timeframe,
     validators::{
         file::{validate_is_file, value_parser_parse_valid_file},
@@ -17,6 +19,10 @@ use crate::{
         },
     },
 };
+
+pub static APPLICATION_NAME: &str = "downloader-hub";
+pub static ORGANIZATION_NAME: &str = "allypost";
+pub static ORGANIZATION_QUALIFIER: &str = "net";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Args, Validate)]
 #[allow(clippy::struct_field_names)]
@@ -147,25 +153,6 @@ impl EndpointConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ValueEnum)]
-pub enum DumpConfigType {
-    Json,
-    Toml,
-}
-#[derive(Debug, Clone, Default, Serialize, Deserialize, Args, Validate)]
-#[allow(clippy::option_option)]
-#[clap(next_help_heading = Some("Run options"))]
-pub struct RunConfig {
-    /// Dump the config to stdout
-    #[arg(long, value_enum, default_value = None)]
-    pub dump_config: Option<Option<DumpConfigType>>,
-
-    /// Dump shell completions to stdout
-    #[arg(long, default_value = None, value_name = "SHELL", value_parser = hacky_dump_completions())]
-    #[serde(skip)]
-    pub dump_completions: Option<Shell>,
-}
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize, Args, Validate)]
 #[clap(next_help_heading = Some("Task options"))]
 pub struct TaskConfig {
@@ -180,29 +167,38 @@ pub struct TaskConfig {
     pub yt_dlp_update_interval: Option<Timeframe>,
 }
 
-#[must_use]
-pub fn hacky_dump_completions() -> impl clap::builder::TypedValueParser {
-    move |s: &str| {
-        let parsed = Shell::from_str(s, true);
+pub struct ProjectConfig;
+impl ProjectConfig {
+    #[must_use]
+    #[inline]
+    pub fn config_dir() -> Option<PathBuf> {
+        Self::get_project_dir().map(|x| x.config_dir().into())
+    }
 
-        if let Ok(shell) = &parsed {
-            let bin_name = std::env::current_exe()
-                .map_err(|_e| ValidationError::new("Unknown application name"))?
-                .file_name()
-                .map(|x| x.to_string_lossy().to_string())
-                .ok_or_else(|| ValidationError::new("Unknown application name"))?;
+    #[must_use]
+    #[inline]
+    pub fn get_config_dir(&self) -> Option<PathBuf> {
+        Self::config_dir()
+    }
 
-            clap_complete::generate(
-                *shell,
-                &mut CliArgs::command(),
-                bin_name,
-                &mut std::io::stdout(),
-            );
-            std::process::exit(0);
-        }
+    #[must_use]
+    #[inline]
+    pub fn cache_dir() -> PathBuf {
+        Self::get_project_dir().map_or_else(
+            || env::temp_dir().join(APPLICATION_NAME),
+            |x| x.cache_dir().into(),
+        )
+    }
 
-        parsed
-            .map(|_| ())
-            .map_err(|_| ValidationError::new("Invalid shell"))
+    #[must_use]
+    #[inline]
+    pub fn get_cache_dir(&self) -> PathBuf {
+        Self::cache_dir()
+    }
+
+    #[must_use]
+    #[inline]
+    pub fn get_project_dir() -> Option<ProjectDirs> {
+        ProjectDirs::from(ORGANIZATION_QUALIFIER, ORGANIZATION_NAME, APPLICATION_NAME)
     }
 }

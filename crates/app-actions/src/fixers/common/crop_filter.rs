@@ -1,6 +1,5 @@
 use std::{fmt::Display, path::PathBuf, process::Stdio};
 
-use app_config::Config;
 use app_helpers::ffprobe;
 use thiserror::Error;
 use tokio::{
@@ -10,7 +9,7 @@ use tokio::{
 use tracing::{debug, trace};
 
 use super::{command::CmdError, FixerError, FixerReturn};
-use crate::fixers::IntoFixerReturn;
+use crate::{config::ActionsConfig, fixers::IntoFixerReturn};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CropFilter {
@@ -116,8 +115,7 @@ async fn generate_crop_filter_for_files(
     const MIN_WIDTH: i64 = 4;
     const MIN_HEIGHT: i64 = 4;
     let mut cmd = Command::new(
-        Config::global()
-            .dependency_paths
+        ActionsConfig::dependency_paths()
             .imagemagick_path()
             .expect("Imagemagick not found"),
     );

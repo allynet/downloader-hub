@@ -4,9 +4,8 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use app_config::Config;
-
 use super::id::time_thread_id;
+use crate::config::HelpersConfig;
 
 pub struct TempFile {
     path: PathBuf,
@@ -18,7 +17,7 @@ impl TempFile {
     where
         T: Into<OsString> + std::marker::Send,
     {
-        let tmp_dir = Config::global().get_cache_dir();
+        let tmp_dir = HelpersConfig::global().get_cache_dir();
 
         if !tmp_dir.exists() {
             std::fs::create_dir_all(&tmp_dir)?;

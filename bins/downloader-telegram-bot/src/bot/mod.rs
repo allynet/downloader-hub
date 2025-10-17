@@ -8,7 +8,6 @@ use app_actions::{
     extractors::AVAILABLE_EXTRACTORS,
     fixers::{handlers::FixerInstance, AVAILABLE_FIXERS},
 };
-use app_config::Config;
 use helpers::status_message::StatusMessage;
 use teloxide::{
     adaptors::trace,
@@ -20,7 +19,10 @@ use teloxide::{
 use tracing::{field, info, trace, Instrument, Span};
 use url::Url;
 
-use crate::queue::{Task, TaskQueue};
+use crate::{
+    config::Config,
+    queue::{Task, TaskQueue},
+};
 
 pub type TeloxideBot =
     teloxide::adaptors::CacheMe<trace::Trace<teloxide::adaptors::DefaultParseMode<teloxide::Bot>>>;
@@ -31,7 +33,7 @@ pub struct TelegramBot;
 impl TelegramBot {
     pub fn instance() -> &'static TeloxideBot {
         TELEGRAM_BOT.get_or_init(|| {
-            let tg_config = Config::global().telegram_bot();
+            let tg_config = Config::bot();
 
             let api_url = Url::parse(&tg_config.api_url).expect("Invalid API URL");
 
@@ -227,7 +229,7 @@ async fn handle_command(msg: Message, command: BotCommand) -> ResponseResult<()>
                 .await?;
         }
         BotCommand::About => {
-            let tg_config = Config::global().telegram_bot();
+            let tg_config = Config::bot();
 
             let text = tg_config.about.clone().unwrap_or_else(|| {
                 let mut paragraphs = vec![

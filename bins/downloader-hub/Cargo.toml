@@ -9,7 +9,7 @@ license.workspace = true
 [dependencies]
 anyhow.workspace = true
 app-actions.workspace = true
-app-config = { workspace = true, features = ["server"] }
+app-config.workspace = true
 app-entities = { version = "*", path = "../../crates/app-entities" }
 app-helpers.workspace = true
 app-logger.workspace = true
@@ -23,6 +23,7 @@ axum-extra = { version = "0.10.1", features = [
     "typed-header",
 ] }
 chrono.workspace = true
+clap.workspace = true
 deadqueue = "0.2.5"
 dotenvy = "0.15.7"
 futures.workspace = true
@@ -45,6 +46,7 @@ tower-http = { version = "0.6.6", features = ["full"] }
 tracing.workspace = true
 ulid = { version = "1.2.1", features = ["postgres"] }
 url.workspace = true
+validator.workspace = true
 
 [lints]
 workspace = true

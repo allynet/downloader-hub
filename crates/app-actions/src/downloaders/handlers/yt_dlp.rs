@@ -6,7 +6,6 @@ use std::{
     time::{Duration, SystemTime},
 };
 
-use app_config::Config;
 use app_helpers::{id::time_id, temp_dir::TempDir, temp_file::TempFile};
 use http::header;
 use serde::{Deserialize, Serialize};
@@ -14,7 +13,7 @@ use tokio::process::Command;
 use tracing::{debug, trace};
 
 use super::{generic, DownloadRequest, DownloadResult, Downloader, DownloaderReturn};
-use crate::common::request::USER_AGENT;
+use crate::{common::request::USER_AGENT, config::ActionsConfig};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct YtDlp;
@@ -38,7 +37,7 @@ impl Downloader for YtDlp {
 impl YtDlp {
     #[allow(clippy::too_many_lines)]
     pub async fn download_one(&self, request: &DownloadRequest) -> Result<DownloadResult, String> {
-        let yt_dlp = Config::global().dependency_paths.yt_dlp_path();
+        let yt_dlp = ActionsConfig::dependency_paths().yt_dlp_path();
         trace!("`yt-dlp' binary: {:?}", &yt_dlp);
         let temp_dir = TempDir::in_tmp_with_prefix("downloader-hub_yt-dlp-")
             .map_err(|e| format!("Failed to create temporary directory for yt-dlp: {e:?}"))?;

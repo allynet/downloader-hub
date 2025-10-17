@@ -1,6 +1,5 @@
 use std::{collections::HashSet, fmt::Write};
 
-use app_config::Config;
 use app_helpers::file_type::{infer_file_type, mime};
 use reqwest::{multipart, Body};
 use serde::{Deserialize, Serialize};
@@ -11,6 +10,7 @@ use tracing::trace;
 use crate::{
     actions::{Action, ActionError, ActionRequest, ActionResult},
     common::request::Client,
+    config::ActionsConfig,
 };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -32,7 +32,7 @@ impl Action for OcrImage {
     }
 
     async fn can_run(&self) -> bool {
-        Config::global().endpoint.ocr_api_base_url.is_some()
+        ActionsConfig::endpoints().ocr_api_base_url.is_some()
     }
 
     async fn can_run_for(&self, req: &ActionRequest) -> bool {
@@ -75,8 +75,7 @@ impl Action for OcrImage {
         })?;
 
         if opts.list_engines {
-            let url = Config::global()
-                .endpoint
+            let url = ActionsConfig::endpoints()
                 .ocr_api_url("endpoints")
                 .ok_or_else(|| ActionError::FailedAction("OCR API URL not set".into()))?;
 
@@ -126,8 +125,7 @@ impl Action for OcrImage {
             }
         };
 
-        let url = Config::global()
-            .endpoint
+        let url = ActionsConfig::endpoints()
             .ocr_api_url(format!("ocr/{}", engine).as_str())
             .ok_or_else(|| ActionError::FailedAction("OCR API URL not set".into()))?;
 
