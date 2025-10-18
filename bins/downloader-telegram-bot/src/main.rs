@@ -27,7 +27,9 @@ async fn main() {
         }
     }
 
-    debug!(config = ?*Config::init_parsed().expect("Failed to init config"), "Running with config");
+    let config = Config::init_parsed().expect("Failed to init config");
+
+    debug!(config = ?*config, "Running with config");
 
     tokio::task::spawn(TaskQueueProcessor::run());
     tokio::task::spawn(TaskRunner::run());
