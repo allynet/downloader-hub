@@ -11,9 +11,7 @@ pub trait GlobalConfig: Sized + 'static {
 
     #[must_use]
     #[inline]
-    fn get_global() -> &'static Self {
-        Self::global_instance()
-            .get()
-            .expect("Config not initialized")
+    fn get_global() -> Option<&'static Self> {
+        Self::global_instance().get()
     }
 }

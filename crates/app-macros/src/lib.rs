@@ -21,6 +21,7 @@ pub fn global_config_derive(input: TokenStream) -> TokenStream {
             #[inline]
             pub fn global() -> &'static Self {
                 Self::get_global()
+                    .expect(&format!("Config not initialized for {}", stringify!(#name)))
             }
 
             #[must_use]
