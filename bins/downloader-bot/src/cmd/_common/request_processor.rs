@@ -61,6 +61,7 @@ const FINISH_RETRY_DELAYS: &[Duration] = &[
 
 /// Download concurrency per delivery attempt.
 const DOWNLOAD_CONCURRENCY: usize = 4;
+const STATUS_UPDATE_DEBOUNCE: Duration = Duration::from_millis(250);
 
 // ---------------------------------------------------------------------------
 // Platform delivery trait
@@ -240,22 +241,56 @@ where
     P: PlatformDelivery,
 {
     let watch_id: u64 = rand::random();
+    let mut pending_event = None;
+    let mut last_status_text = None;
 
     loop {
-        let event = match rx.recv().await {
-            Ok(Some(event)) => event,
-            // stream closed cleanly
-            Ok(None) => return WatchOutcome::Closed,
-            Err(e) => {
-                warn!(
-                    ?e,
-                    ?request_id,
-                    watch_id,
-                    "watch stream error; will reconnect"
-                );
-                return WatchOutcome::Reconnect;
-            }
+        let mut event = match pending_event.take() {
+            Some(event) => event,
+            None => match rx.recv().await {
+                Ok(Some(event)) => event,
+                // stream closed cleanly
+                Ok(None) => return WatchOutcome::Closed,
+                Err(e) => {
+                    warn!(
+                        ?e,
+                        ?request_id,
+                        watch_id,
+                        "watch stream error; will reconnect"
+                    );
+                    return WatchOutcome::Reconnect;
+                }
+            },
         };
+        let mut outcome_after_event = None;
+
+        if is_passive_status_event(&event) {
+            let deadline = Instant::now() + STATUS_UPDATE_DEBOUNCE;
+            loop {
+                match timeout_at(deadline, rx.recv()).await {
+                    Ok(Ok(Some(next))) if is_passive_status_event(&next) => event = next,
+                    Ok(Ok(Some(next))) => {
+                        pending_event = Some(next);
+                        break;
+                    }
+                    Ok(Ok(None)) => {
+                        outcome_after_event = Some(WatchOutcome::Closed);
+                        break;
+                    }
+                    Ok(Err(e)) => {
+                        warn!(
+                            ?e,
+                            ?request_id,
+                            watch_id,
+                            "watch stream error; will reconnect"
+                        );
+                        outcome_after_event = Some(WatchOutcome::Reconnect);
+                        break;
+                    }
+                    Err(_) => break,
+                }
+            }
+        }
 
         match event {
             WorkRequestWatchEvent::Request(req) => match req.status() {
@@ -266,14 +301,18 @@ where
                     } else {
                         "Request is waiting for processing..."
                     };
-                    platform.update_status_message(message).await;
+                    update_status_if_changed(platform, &mut last_status_text, message).await;
                 }
                 WorkRequestStatus::InProgress(progress) => {
                     if !progress.waiting_for_requester {
                         if let Some(message) = progress.message.as_ref() {
-                            platform.update_status_message(message).await;
+                            update_status_if_changed(platform, &mut last_status_text, message)
+                                .await;
                         }
                         // No overall task timeout here; passive observation.
+                        if let Some(outcome) = outcome_after_event {
+                            return outcome;
+                        }
                         continue;
                     }
                     // waitingForRequester: claim a delivery attempt.
@@ -303,11 +342,12 @@ where
                         // lease expiry. The matching cleanup/release will
                         // emit the waiting state, then we claim a fresh
                         // attempt. Display recovery status.
-                        platform
-                            .update_status_message(
-                                "Recovering delivery (waiting for prior attempt to clear)...",
-                            )
-                            .await;
+                        update_status_if_changed(
+                            platform,
+                            &mut last_status_text,
+                            "Recovering delivery (waiting for prior attempt to clear)...",
+                        )
+                        .await;
                         continue;
                     }
                     // a normal task that just lost an ack race: exit.
@@ -319,9 +359,12 @@ where
                     return WatchOutcome::Done;
                 }
                 WorkRequestStatus::Failed { reason, .. } => {
-                    platform
-                        .update_status_message(&format!("Request failed: {reason}"))
-                        .await;
+                    update_status_if_changed(
+                        platform,
+                        &mut last_status_text,
+                        &format!("Request failed: {reason}"),
+                    )
+                    .await;
                     return WatchOutcome::Done;
                 }
             },
@@ -346,7 +389,36 @@ where
                 return WatchOutcome::Reopen;
             }
         }
+
+        if let Some(outcome) = outcome_after_event {
+            return outcome;
+        }
     }
+}
+
+const fn is_passive_status_event(event: &WorkRequestWatchEvent) -> bool {
+    let WorkRequestWatchEvent::Request(request) = event else {
+        return false;
+    };
+
+    match request.status() {
+        WorkRequestStatus::Pending => true,
+        WorkRequestStatus::InProgress(progress) => !progress.waiting_for_requester,
+        _ => false,
+    }
+}
+
+async fn update_status_if_changed<P>(platform: &mut P, last_text: &mut Option<String>, text: &str)
+where
+    P: PlatformDelivery,
+{
+    if last_text.as_deref() == Some(text) {
+        trace!("Skipping unchanged request status");
+        return;
+    }
+
+    platform.update_status_message(text).await;
+    *last_text = Some(text.to_string());
 }
 
 enum ClaimOutcome {
@@ -377,9 +449,9 @@ async fn watch_for_delivery_abort(rx: &mut Receiver<WorkRequestWatchEvent>) -> D
                 WorkRequestStatus::Done { .. } => return DeliveryAbort::Unavailable,
                 _ => {}
             },
-            Ok(Some(WorkRequestWatchEvent::Unavailable))
-            | Ok(None)
-            | Err(_) => return DeliveryAbort::Unavailable,
+            Ok(Some(WorkRequestWatchEvent::Unavailable) | None) | Err(_) => {
+                return DeliveryAbort::Unavailable;
+            }
             Ok(Some(_)) => {}
         }
     }
@@ -445,67 +517,15 @@ where
             delivery_attempt_id,
             files,
         } => {
-            let attempt: Arc<str> = delivery_attempt_id;
-            let lease_started_at = Instant::now();
-            let operation_deadline = lease_started_at + DELIVERY_OPERATION_TIMEOUT;
-            let lease_deadline = lease_started_at + DELIVERY_LEASE_TIMEOUT;
-
-            let download = timeout_at(
-                operation_deadline,
-                download_and_deliver(request_id.clone(), files, platform),
-            );
-
-            let download_result = tokio::select! {
-                biased;
-                abort = watch_for_delivery_abort(rx) => {
-                    abort_claimed_delivery(
-                        request_id.clone(),
-                        attempt.clone(),
-                        platform,
-                        lease_deadline,
-                        abort,
-                    )
-                    .await;
-                    return ClaimOutcome::Done;
-                }
-                result = download => result,
-            };
-
-            match download_result {
-                Ok(()) => {
-                    match finish_delivery(request_id.clone(), attempt.clone(), operation_deadline)
-                        .await
-                    {
-                        FinishOutcome::Finished => ClaimOutcome::Finished,
-                        FinishOutcome::Unavailable => ClaimOutcome::Unavailable,
-                        FinishOutcome::Continue => ClaimOutcome::Reopen,
-                        FinishOutcome::Retry => {
-                            retry_delivery(
-                                request_id,
-                                attempt,
-                                platform,
-                                delivery_attempts,
-                                lease_deadline,
-                            )
-                            .await
-                        }
-                    }
-                }
-                Err(_) => {
-                    warn!(
-                        ?request_id,
-                        "delivery operation timed out; retrying delivery"
-                    );
-                    retry_delivery(
-                        request_id,
-                        attempt,
-                        platform,
-                        delivery_attempts,
-                        lease_deadline,
-                    )
-                    .await
-                }
-            }
+            deliver_claimed(
+                rx,
+                request_id,
+                platform,
+                delivery_attempts,
+                delivery_attempt_id,
+                files,
+            )
+            .await
         }
         WorkRequestAckResult::AlreadyDelivering => {
             if is_recovery {
@@ -535,6 +555,76 @@ where
         WorkRequestAckResult::BackendError => {
             warn!(?request_id, "ack backend error; reopening stream");
             ClaimOutcome::Reopen
+        }
+    }
+}
+
+async fn deliver_claimed<P>(
+    rx: &mut Receiver<WorkRequestWatchEvent>,
+    request_id: Arc<str>,
+    platform: &mut P,
+    delivery_attempts: &mut usize,
+    attempt: Arc<str>,
+    files: Arc<[FileReference]>,
+) -> ClaimOutcome
+where
+    P: PlatformDelivery,
+{
+    let lease_started_at = Instant::now();
+    let operation_deadline = lease_started_at + DELIVERY_OPERATION_TIMEOUT;
+    let lease_deadline = lease_started_at + DELIVERY_LEASE_TIMEOUT;
+    let download = timeout_at(
+        operation_deadline,
+        download_and_deliver(request_id.clone(), files, platform),
+    );
+
+    let download_result = tokio::select! {
+        biased;
+        abort = watch_for_delivery_abort(rx) => {
+            abort_claimed_delivery(
+                request_id.clone(),
+                attempt.clone(),
+                platform,
+                lease_deadline,
+                abort,
+            )
+            .await;
+            return ClaimOutcome::Done;
+        }
+        result = download => result,
+    };
+
+    match download_result {
+        Ok(()) => {
+            match finish_delivery(request_id.clone(), attempt.clone(), operation_deadline).await {
+                FinishOutcome::Finished => ClaimOutcome::Finished,
+                FinishOutcome::Unavailable => ClaimOutcome::Unavailable,
+                FinishOutcome::Continue => ClaimOutcome::Reopen,
+                FinishOutcome::Retry => {
+                    retry_delivery(
+                        request_id,
+                        attempt,
+                        platform,
+                        delivery_attempts,
+                        lease_deadline,
+                    )
+                    .await
+                }
+            }
+        }
+        Err(_) => {
+            warn!(
+                ?request_id,
+                "delivery operation timed out; retrying delivery"
+            );
+            retry_delivery(
+                request_id,
+                attempt,
+                platform,
+                delivery_attempts,
+                lease_deadline,
+            )
+            .await
         }
     }
 }

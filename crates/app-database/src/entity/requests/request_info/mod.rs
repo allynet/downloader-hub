@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::entity::accounts::{AccountPlaceRef, AccountUserRef};
-
 use super::file_reference::FileReference;
+use crate::entity::accounts::{AccountPlaceRef, AccountUserRef};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

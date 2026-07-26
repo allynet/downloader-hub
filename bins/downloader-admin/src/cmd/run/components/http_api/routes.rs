@@ -12,7 +12,7 @@ use app_database::{
     entity::{
         accounts::{AccountPlaceRef, AccountUserRef, Platform},
         authed::AuthedForRole,
-        requests::request_info::{RefreshAccountInfoPayload, RequestInfo, WorkKind},
+        requests::request_info::{RefreshAccountInfoPayload, RequestInfo},
     },
 };
 use axum::{
@@ -506,23 +506,22 @@ async fn enqueue_account_refresh(
     idempotency_key: String,
 ) -> Result<app_database::api::requests::RequestIdResponse, app_database::DatabaseError> {
     Database::global()
-        .requests_add_with_work_kind(
+        .requests_add(
             Arc::from(admin_id),
             RequestInfo::RefreshAccountInfo(payload),
             HashMap::new(),
             Some(idempotency_key),
             None,
             None,
-            Some(WorkKind::AccountRefresh),
         )
         .await
 }
 
-fn is_stale_user(user: &AccountUserInfo) -> bool {
+const fn is_stale_user(user: &AccountUserInfo) -> bool {
     user.username.is_none() && user.display_name.is_none()
 }
 
-fn is_stale_place(place: &AccountPlaceInfo) -> bool {
+const fn is_stale_place(place: &AccountPlaceInfo) -> bool {
     place.name.is_none() && place.username.is_none()
 }
 
@@ -580,13 +579,10 @@ pub async fn refresh_account_user(
         }],
         places: vec![],
     };
-    let idempotency_key =
-        refresh_idempotency_key("user", user.platform, &user.platform_id);
+    let idempotency_key = refresh_idempotency_key("user", user.platform, &user.platform_id);
 
     match enqueue_account_refresh(session.admin_id(), payload, idempotency_key).await {
-        Ok(res) => V1Response::ok(RefreshEnqueueResponse {
-            request_id: res.id,
-        }),
+        Ok(res) => V1Response::ok(RefreshEnqueueResponse { request_id: res.id }),
         Err(e) => {
             tracing::error!(?e, "refresh_account_user enqueue failed");
             V1Response::<RefreshEnqueueResponse>::err(
@@ -625,13 +621,10 @@ pub async fn refresh_account_place(
             id: place.platform_id.clone(),
         }],
     };
-    let idempotency_key =
-        refresh_idempotency_key("place", place.platform, &place.platform_id);
+    let idempotency_key = refresh_idempotency_key("place", place.platform, &place.platform_id);
 
     match enqueue_account_refresh(session.admin_id(), payload, idempotency_key).await {
-        Ok(res) => V1Response::ok(RefreshEnqueueResponse {
-            request_id: res.id,
-        }),
+        Ok(res) => V1Response::ok(RefreshEnqueueResponse { request_id: res.id }),
         Err(e) => {
             tracing::error!(?e, "refresh_account_place enqueue failed");
             V1Response::<RefreshEnqueueResponse>::err(
@@ -662,11 +655,8 @@ pub async fn refresh_stale_accounts(session: WriteSession) -> impl IntoResponse 
         }
     };
 
-    let stale_users: Vec<AccountUserInfo> = users
-        .iter()
-        .filter(|u| is_stale_user(u))
-        .cloned()
-        .collect();
+    let stale_users: Vec<AccountUserInfo> =
+        users.iter().filter(|u| is_stale_user(u)).cloned().collect();
     let stale_places: Vec<AccountPlaceInfo> = places
         .iter()
         .filter(|p| is_stale_place(p))

@@ -1,14 +1,15 @@
-use std::future::Future;
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 
 use app_database::entity::accounts::{
     AccountPlace, AccountPlaceRef, AccountUser, AccountUserRef, Platform,
 };
-use teloxide::types::{
-    Chat, ChatFullInfo, ChatFullInfoKind, ChatFullInfoPrivate, ChatFullInfoPublicKind, ChatId,
-    ChatKind, PublicChatKind, User,
+use teloxide::{
+    requests::Requester,
+    types::{
+        Chat, ChatFullInfo, ChatFullInfoKind, ChatFullInfoPrivate, ChatFullInfoPublicKind, ChatId,
+        ChatKind, PublicChatKind, User,
+    },
 };
-use teloxide::requests::Requester;
 
 use super::super::TelegramBot;
 
@@ -74,12 +75,16 @@ const fn chat_kind_str(kind: &ChatKind) -> &'static str {
     }
 }
 
-pub fn fetch_user_fut(platform_id: &str) -> Pin<Box<dyn Future<Output = Result<AccountUser, String>> + Send>> {
+pub fn fetch_user_fut(
+    platform_id: &str,
+) -> Pin<Box<dyn Future<Output = Result<AccountUser, String>> + Send>> {
     let id = platform_id.to_string();
     Box::pin(async move { fetch_user_by_platform_id(&id).await })
 }
 
-pub fn fetch_place_fut(platform_id: &str) -> Pin<Box<dyn Future<Output = Result<AccountPlace, String>> + Send>> {
+pub fn fetch_place_fut(
+    platform_id: &str,
+) -> Pin<Box<dyn Future<Output = Result<AccountPlace, String>> + Send>> {
     let id = platform_id.to_string();
     Box::pin(async move { fetch_place_by_platform_id(&id).await })
 }

@@ -30,38 +30,13 @@ impl Database {
     where
         T: Into<RequestInfo>,
     {
-        self.requests_add_with_work_kind(
-            requester_id,
-            info,
-            metadata,
-            idempotency_key,
-            ordered_by,
-            ordered_in,
-            None,
-        )
-        .await
-    }
-
-    pub async fn requests_add_with_work_kind<T>(
-        &self,
-        requester_id: Arc<str>,
-        info: T,
-        metadata: HashMap<String, String>,
-        idempotency_key: Option<String>,
-        ordered_by: Option<AccountUserRef>,
-        ordered_in: Option<AccountPlaceRef>,
-        work_kind: Option<crate::entity::requests::request_info::WorkKind>,
-    ) -> Result<RequestIdResponse, DatabaseError>
-    where
-        T: Into<RequestInfo>,
-    {
         let info = info.into();
-        let work_kind = work_kind.or_else(|| match info.work_kind() {
+        let work_kind = match info.work_kind() {
             crate::entity::requests::request_info::WorkKind::AccountRefresh => {
                 Some(crate::entity::requests::request_info::WorkKind::AccountRefresh)
             }
             crate::entity::requests::request_info::WorkKind::Download => None,
-        });
+        };
 
         let mut req = DatabaseRequest::named("requests:add")
             .with_arg(

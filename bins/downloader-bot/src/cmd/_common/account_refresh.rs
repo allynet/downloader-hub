@@ -1,5 +1,4 @@
-use std::future::Future;
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 
 use app_database::entity::accounts::{AccountPlace, AccountUser, Platform};
 use app_peer_comms::message::v1::central::{
@@ -11,10 +10,8 @@ use tracing::{error, info, warn};
 
 use crate::peering::rpc::RpcClient;
 
-pub type UserFetchFut =
-    Pin<Box<dyn Future<Output = Result<AccountUser, String>> + Send>>;
-pub type PlaceFetchFut =
-    Pin<Box<dyn Future<Output = Result<AccountPlace, String>> + Send>>;
+pub type UserFetchFut = Pin<Box<dyn Future<Output = Result<AccountUser, String>> + Send>>;
+pub type PlaceFetchFut = Pin<Box<dyn Future<Output = Result<AccountPlace, String>> + Send>>;
 
 pub async fn run_refresh_loop(
     platform: Platform,

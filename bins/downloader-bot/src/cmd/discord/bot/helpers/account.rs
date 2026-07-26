@@ -1,11 +1,12 @@
-use std::future::Future;
-use std::pin::Pin;
+use std::{future::Future, pin::Pin};
 
 use app_database::entity::accounts::{
     AccountPlace, AccountPlaceRef, AccountUser, AccountUserRef, Platform,
 };
-use serenity::all::{Channel, ChannelId, GuildId, UserId};
-use serenity::cache::Cache;
+use serenity::{
+    all::{Channel, ChannelId, GuildId, UserId},
+    cache::Cache,
+};
 
 use super::super::discord_bot::DiscordBot;
 
@@ -133,12 +134,16 @@ pub fn from_message(
     (user, places, Some(place_ref))
 }
 
-pub fn fetch_user_fut(platform_id: &str) -> Pin<Box<dyn Future<Output = Result<AccountUser, String>> + Send>> {
+pub fn fetch_user_fut(
+    platform_id: &str,
+) -> Pin<Box<dyn Future<Output = Result<AccountUser, String>> + Send>> {
     let id = platform_id.to_string();
     Box::pin(async move { fetch_user_by_platform_id(&id).await })
 }
 
-pub fn fetch_place_fut(platform_id: &str) -> Pin<Box<dyn Future<Output = Result<AccountPlace, String>> + Send>> {
+pub fn fetch_place_fut(
+    platform_id: &str,
+) -> Pin<Box<dyn Future<Output = Result<AccountPlace, String>> + Send>> {
     let id = platform_id.to_string();
     Box::pin(async move { fetch_place_by_platform_id(&id).await })
 }
@@ -172,7 +177,7 @@ pub async fn fetch_place_by_platform_id(platform_id: &str) -> Result<AccountPlac
         platform: Platform::Discord,
         platform_id: guild_id.to_string(),
         kind: Some("server".to_owned()),
-        name: Some(guild.name.clone()),
+        name: Some(guild.name),
         username: None,
         parent_platform_id: None,
         last_seen: 0,

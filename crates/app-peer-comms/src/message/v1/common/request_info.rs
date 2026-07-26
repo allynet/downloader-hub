@@ -19,9 +19,9 @@ impl TryFrom<app_database::entity::requests::request_info::RequestInfo> for Requ
             app_database::entity::requests::request_info::RequestInfo::DownloadAndFix(file) => {
                 Ok(Self::DownloadAndFix(file.try_into()?))
             }
-            app_database::entity::requests::request_info::RequestInfo::RefreshAccountInfo(payload) => {
-                Ok(Self::RefreshAccountInfo(payload))
-            }
+            app_database::entity::requests::request_info::RequestInfo::RefreshAccountInfo(
+                payload,
+            ) => Ok(Self::RefreshAccountInfo(payload)),
         }
     }
 }

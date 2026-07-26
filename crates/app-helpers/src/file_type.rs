@@ -16,7 +16,7 @@ pub fn infer_file_type(file: &Path) -> anyhow::Result<Mime> {
                 .ok()
         })
         .or_else(|| magic_infer_from_filepath(&file).map(ToString::to_string))
-        .ok_or_else(|| anyhow::anyhow!("Could not infer file type for file: {:?}", &file))?;
+        .ok_or_else(|| anyhow::anyhow!("Could not infer file type for file: {:?}", file))?;
 
     Mime::from_str(&mime_type)
         .map_err(|e| anyhow::anyhow!("Failed to parse mime type: {:?}, error: {:?}", mime_type, e))

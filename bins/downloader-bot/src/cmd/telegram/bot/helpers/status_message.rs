@@ -19,6 +19,8 @@ pub struct StatusMessage {
     msg_id: MessageId,
     #[serde(default)]
     reply_msg_id: Option<MessageId>,
+    #[serde(skip)]
+    last_text: Option<String>,
 }
 impl StatusMessage {
     pub const fn new(chat_id: ChatId, msg_id: MessageId, reply_msg_id: Option<MessageId>) -> Self {
@@ -26,6 +28,7 @@ impl StatusMessage {
             chat_id,
             msg_id,
             reply_msg_id,
+            last_text: None,
         }
     }
 
@@ -63,6 +66,7 @@ impl StatusMessage {
             chat_id,
             msg_id: self.msg_id,
             reply_msg_id: Some(new_msg.id),
+            last_text: Some(text.to_string()),
         })
     }
 
@@ -107,6 +111,11 @@ impl StatusMessage {
     }
 
     pub async fn try_update_message(&mut self, text: &str) -> Result<(), teloxide::RequestError> {
+        if self.last_text.as_deref() == Some(text) {
+            trace!(chat_id = ?self.chat_id, msg_id = ?self.status_msg_id(), "Skipped unchanged message");
+            return Ok(());
+        }
+
         for _ in 0..3 {
             match self.status_msg_id() {
                 Some(reply_id) => {
@@ -138,11 +147,22 @@ impl StatusMessage {
                         continue;
                     }
 
+                    if matches!(
+                        res,
+                        Err(teloxide::RequestError::Api(
+                            teloxide::ApiError::MessageNotModified
+                        ))
+                    ) {
+                        self.last_text = Some(text.to_string());
+                        return Ok(());
+                    }
+
                     if let Err(e) = res {
                         warn!(chat_id = ?self.chat_id, msg_id = ?self.status_msg_id(), ?e, "Failed to update message");
                         continue;
                     }
 
+                    self.last_text = Some(text.to_string());
                     trace!(chat_id = ?self.chat_id, msg_id = ?self.status_msg_id(), "Updated message");
 
                     return Ok(());
@@ -151,6 +171,7 @@ impl StatusMessage {
                     let status_msg = self.try_send_additional_message(text).await?;
 
                     self.reply_msg_id = Some(status_msg.id);
+                    self.last_text = Some(text.to_string());
 
                     trace!(chat_id = ?self.chat_id, msg_id = ?self.status_msg_id(), "Sent additional message");
 
@@ -172,9 +193,14 @@ impl StatusMessage {
 
     pub async fn try_delete_message(&self) -> Result<(), teloxide::RequestError> {
         if let Some(id) = self.status_msg_id() {
-            TelegramBot::instance()
-                .delete_message(self.chat_id, id)
-                .await?;
+            try_send_to_retrying(
+                self.chat_id,
+                id,
+                Box::new(move |chat_id, id| async move {
+                    TelegramBot::instance().delete_message(chat_id, id).await
+                }),
+            )
+            .await?;
         }
 
         Ok(())

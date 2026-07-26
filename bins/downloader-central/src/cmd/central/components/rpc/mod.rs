@@ -663,17 +663,22 @@ impl CentralRpcServer {
                                             return;
                                         }
                                         Err(e) => {
-                                            error!(?e, ?req_id, "account refresh convert failed; releasing");
+                                            error!(
+                                                ?e,
+                                                ?req_id,
+                                                "account refresh convert failed; releasing"
+                                            );
                                             let _ = Database::global()
                                                 .requests_free(req_id, authed_id.clone())
                                                 .await;
                                         }
                                     }
                                 }
-                                Ok(_) => continue,
+                                Ok(_) => {}
                                 Err(e) => {
                                     error!(?e, "account refresh take failed");
-                                    let _ = tx.send(GetAccountRefreshItemResult::BackendError).await;
+                                    let _ =
+                                        tx.send(GetAccountRefreshItemResult::BackendError).await;
                                     return;
                                 }
                             }

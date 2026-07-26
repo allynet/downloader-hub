@@ -22,9 +22,9 @@ impl TryFrom<app_database::entity::requests::request_info::RequestInfo> for Work
                 .try_into()
                 .map(Self::DownloadAndFix)
                 .map_err(Into::into),
-            app_database::entity::requests::request_info::RequestInfo::RefreshAccountInfo(payload) => {
-                Ok(Self::RefreshAccountInfo(payload))
-            }
+            app_database::entity::requests::request_info::RequestInfo::RefreshAccountInfo(
+                payload,
+            ) => Ok(Self::RefreshAccountInfo(payload)),
         }
     }
 }

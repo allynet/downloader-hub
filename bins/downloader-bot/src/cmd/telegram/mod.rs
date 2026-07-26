@@ -1,6 +1,5 @@
-use tracing::{error, info, instrument, warn};
-
 use app_database::entity::accounts::Platform;
+use tracing::{error, info, instrument, warn};
 
 use super::CmdResult;
 use crate::{

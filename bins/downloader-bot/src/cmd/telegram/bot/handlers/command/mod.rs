@@ -5,29 +5,49 @@ use teloxide::{
 };
 use tracing::{info, trace};
 
-use crate::cmd::telegram::bot::{BotCommand, TelegramBot};
+use crate::cmd::telegram::bot::{BotCommand, TelegramBot, helpers::retried::try_send_to_retrying};
+
+async fn send_command_message(
+    msg: &Message,
+    text: impl Into<String>,
+    link_preview_options: Option<LinkPreviewOptions>,
+) -> ResponseResult<Message> {
+    try_send_to_retrying(
+        msg.chat.id,
+        (text.into(), msg.id, link_preview_options),
+        Box::new(
+            move |chat_id, (text, reply_to, link_preview_options)| async move {
+                let request = TelegramBot::instance()
+                    .send_message(chat_id, text)
+                    .reply_parameters(ReplyParameters::new(reply_to).allow_sending_without_reply());
+                if let Some(options) = link_preview_options {
+                    request.link_preview_options(options).await
+                } else {
+                    request.await
+                }
+            },
+        ),
+    )
+    .await
+}
 
 #[allow(clippy::too_many_lines)]
 pub async fn handle_command(msg: &Message, command: BotCommand) -> ResponseResult<()> {
     info!(?command, "Handling command");
     match command {
         BotCommand::Help => {
-            TelegramBot::instance()
-                .send_message(msg.chat.id, BotCommand::descriptions().to_string())
-                .reply_parameters(ReplyParameters::new(msg.id).allow_sending_without_reply())
-                .await?;
+            send_command_message(msg, BotCommand::descriptions().to_string(), None).await?;
         }
         BotCommand::Start => {
-            TelegramBot::instance()
-                .send_message(
-                    msg.chat.id,
-                    "Hello! I'm a bot that can help download your memes.\n\nJust send me a link \
-                     to a funny video and I'll do the rest!\nYou can also just send or forward a \
-                     message with media and links to me and I'll fix it up for you!\n\nIf you'd \
-                     like to know more use the /help or /about commands.",
-                )
-                .reply_parameters(ReplyParameters::new(msg.id).allow_sending_without_reply())
-                .await?;
+            send_command_message(
+                msg,
+                "Hello! I'm a bot that can help download your memes.\n\nJust send me a link to a \
+                 funny video and I'll do the rest!\nYou can also just send or forward a message \
+                 with media and links to me and I'll fix it up for you!\n\nIf you'd like to know \
+                 more use the /help or /about commands.",
+                None,
+            )
+            .await?;
         }
         BotCommand::About => {
             let tg_config = TelegramBot::instance().config.clone();
@@ -55,23 +75,21 @@ pub async fn handle_command(msg: &Message, command: BotCommand) -> ResponseResul
 
             trace!(?text, "Sending about message");
 
-            TelegramBot::instance()
-                .send_message(msg.chat.id, text.trim())
-                .reply_parameters(ReplyParameters::new(msg.id).allow_sending_without_reply())
-                .link_preview_options(LinkPreviewOptions {
+            send_command_message(
+                msg,
+                text.trim(),
+                Some(LinkPreviewOptions {
                     is_disabled: true,
                     prefer_large_media: false,
                     prefer_small_media: false,
                     show_above_text: false,
                     url: None,
-                })
-                .await?;
+                }),
+            )
+            .await?;
         }
         BotCommand::Ping => {
-            TelegramBot::instance()
-                .send_message(msg.chat.id, "Pong!")
-                .reply_parameters(ReplyParameters::new(msg.id).allow_sending_without_reply())
-                .await?;
+            send_command_message(msg, "Pong!", None).await?;
         }
         BotCommand::ListExtractors | BotCommand::ListDownloaders | BotCommand::ListFixers => {
             use crate::cmd::_common::capabilities::{CapabilityKind, fetch, render};
@@ -84,10 +102,7 @@ pub async fn handle_command(msg: &Message, command: BotCommand) -> ResponseResul
                 || "Failed to fetch capabilities from central.".to_string(),
                 |summary| render(kind, &summary),
             );
-            TelegramBot::instance()
-                .send_message(msg.chat.id, text)
-                .reply_parameters(ReplyParameters::new(msg.id).allow_sending_without_reply())
-                .await?;
+            send_command_message(msg, text, None).await?;
         }
     }
 
