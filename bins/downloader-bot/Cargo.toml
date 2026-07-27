@@ -29,6 +29,7 @@ serenity = "0.12.4"
 shlex = "2.0.1"
 teloxide = { version = "0.17.0", default-features = false, features = ["cache-me", "macros", "rustls", "trace-adaptor"] }
 thiserror.workspace = true
+tikv-jemallocator.workspace = true
 tokio.workspace = true
 tokio-tungstenite = { version = "0.29.0", features = ["rustls", "rustls-tls-webpki-roots", "url"] }
 tracing.workspace = true

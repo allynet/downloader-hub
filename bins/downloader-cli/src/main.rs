@@ -13,6 +13,9 @@ use tracing_subscriber::{filter::LevelFilter, util::SubscriberInitExt};
 
 use crate::config::Config;
 
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 mod config;
 
 #[tokio::main]

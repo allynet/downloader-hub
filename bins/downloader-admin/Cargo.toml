@@ -29,6 +29,7 @@ rust-embed = "8.7.2"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+tikv-jemallocator.workspace = true
 tokio.workspace = true
 tower = "0.5.2"
 tower-http = { version = "0.7.0", features = ["full"] }

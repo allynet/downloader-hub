@@ -1,6 +1,9 @@
 use app_helpers::futures::run_future;
 use tracing::{Level, debug, trace};
 
+#[global_allocator]
+static GLOBAL: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+
 mod cmd;
 mod config;
 mod peering;
