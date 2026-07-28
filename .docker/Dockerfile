@@ -37,6 +37,8 @@ ARG RUNNER_CONTAINER='alpine:latest'
 ##
 FROM rust:${RUST_VERSION}-alpine AS chef
 # `clang` is needed to build the musl C deps of some crates.
+# `make` is needed by tikv-jemalloc-sys (classic `./configure && make` build;
+# the other C deps use cmake/cc-rs and don't need it).
 # `curl` is needed by the `builder` stage (upx download) and `bash` by the
 # entrypoint-generation scripts. They are installed here so they are available
 # in every stage that derives from `chef` (deps, builder).
@@ -46,6 +48,7 @@ RUN update-ca-certificates \
   curl \
   bash \
   clang \
+  make \
   && cargo install --locked cargo-chef \
   && rustup target add "${RUST_TARGET}"
 WORKDIR /app
