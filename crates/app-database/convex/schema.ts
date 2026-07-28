@@ -163,6 +163,20 @@ export const connections = {
   lastSeen: v.int64(),
 };
 
+export const logSettingsScope = v.union(
+  v.literal("global"),
+  v.literal("central"),
+  v.literal("worker"),
+  v.literal("bot"),
+  v.literal("admin"),
+);
+export const logSettingsId = "downloader_hub_log_settings" as const;
+export const logSettings = {
+  scope: logSettingsScope,
+  console: v.optional(v.string()),
+  file: v.optional(v.string()),
+};
+
 export default defineSchema(
   {
     [authedId]: defineTable(authed).index("by_token", ["token"]),
@@ -191,6 +205,8 @@ export default defineSchema(
     [connectionsId]: defineTable(connections)
       .index("by_central_authed", ["central", "authed"])
       .index("by_last_seen", ["lastSeen"]),
+
+    [logSettingsId]: defineTable(logSettings).index("by_scope", ["scope"]),
 
     [accountUserId]: defineTable(accountUser).index("by_platform_id", [
       "platform",

@@ -46,11 +46,8 @@ impl PlatformDelivery for StatusMessage {
         &self,
         files: &[(TempFile, Option<PathBuf>)],
     ) -> Vec<(Option<PathBuf>, String)> {
-        let (media_groups, failed_files) = files_to_input_media_groups(
-            files.iter().map(|(x, _)| x),
-            TelegramBot::max_payload_size().bytes().cast_unsigned(),
-        )
-        .await;
+        let (media_groups, failed_files) =
+            files_to_input_media_groups(files.iter().map(|(x, _)| x), self.max_filesize()).await;
 
         let replying_to_id = self.msg_replying_to_id();
         let chat_id = self.chat_id();

@@ -4,7 +4,10 @@ use std::{
 };
 
 use app_config::common::DatabaseConfig;
-use app_database::Database;
+use app_database::{
+    Database,
+    api::log_settings::{LogSettingsScope, resolve_log_settings},
+};
 use app_helpers::futures::retry_future::{RetryConfig, keep_running};
 use futures::StreamExt;
 use tokio::task::JoinSet;
@@ -75,6 +78,14 @@ pub async fn run(config: DatabaseConfig) -> super::ComponentResult {
     ));
 
     js.spawn(keep_running(
+        "Database::log_settings_watcher",
+        Box::new(run_log_settings_watcher),
+        RetryConfig::new()
+            .with_retry_delays(RETRY_DELAYS.clone())
+            .with_reset_retries_after(Some(FIVE_MINS)),
+    ));
+
+    js.spawn(keep_running(
         "Database::revocation_watcher",
         Box::new(|| async {
             trace!("Starting authed revocation watcher");
@@ -111,5 +122,30 @@ pub async fn run(config: DatabaseConfig) -> super::ComponentResult {
         warn!("{name} {outcome}; restarting component");
     }
 
+    Ok(())
+}
+
+async fn run_log_settings_watcher() -> super::ComponentResult {
+    trace!("Starting log-settings watcher");
+    let mut settings = Database::global().log_settings_watch().await?;
+    while let Some(emission) = settings.next().await {
+        match emission {
+            Ok(rows) => {
+                super::rpc::set_log_settings(rows.clone());
+                let effective = resolve_log_settings(&rows, LogSettingsScope::Central);
+                let dynamic = app_logger::LogFilterSettings {
+                    console: effective.console,
+                    file: effective.file,
+                };
+                if let Err(e) = app_logger::apply_log_filter_settings(&dynamic) {
+                    warn!(
+                        ?e,
+                        "Invalid dynamic log settings; retaining current filters"
+                    );
+                }
+            }
+            Err(e) => warn!(?e, "Error reading log settings from database"),
+        }
+    }
     Ok(())
 }

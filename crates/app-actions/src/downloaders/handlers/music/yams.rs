@@ -1,7 +1,7 @@
 use std::{
     convert::Into,
     ffi::OsStr,
-    path::{Path, PathBuf},
+    path::PathBuf,
     time::{Duration, Instant},
 };
 
@@ -46,8 +46,10 @@ pub struct YamsProvider;
 
 #[async_trait::async_trait]
 impl Handler for YamsProvider {
-    #[tracing::instrument(skip(self, song_url), fields(url = ?song_url.as_str()))]
-    async fn download(&self, download_dir: &Path, song_url: &Url) -> anyhow::Result<PathBuf> {
+    #[tracing::instrument(skip(self, request), fields(url = ?request.url.url().as_str()))]
+    async fn download(&self, request: &DownloadRequest) -> anyhow::Result<PathBuf> {
+        let download_dir = request.download_dir();
+        let song_url = request.url.url();
         debug!("Downloading song");
         let download_start = Instant::now();
         let download_url = Self::get_download_url(song_url).await.map_err(|e| {
@@ -70,7 +72,10 @@ impl Handler for YamsProvider {
         );
 
         let song_zip_path = Generic
-            .download(&DownloadRequest::from_url(&download_url, download_dir))
+            .download(
+                &DownloadRequest::from_url(&download_url, download_dir)
+                    .with_downloader_options(request.downloader_options.clone()),
+            )
             .await
             .map_err(|e| anyhow::anyhow!(e))?;
 
@@ -80,7 +85,7 @@ impl Handler for YamsProvider {
         );
 
         let song_file_path =
-            Self::extract_song_from_zip(download_dir.to_path_buf(), song_zip_path.path).await?;
+            Self::extract_song_from_zip(download_dir.clone(), song_zip_path.path).await?;
 
         debug!(?song_file_path, "Song downloaded and extracted");
 

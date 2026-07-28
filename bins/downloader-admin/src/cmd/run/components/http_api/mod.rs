@@ -101,6 +101,11 @@ fn api_router() -> Router<AppState> {
         )
         .route("/connections", get(routes::connections))
         .route("/metrics", get(routes::metrics))
+        .route("/log-settings", get(routes::list_log_settings))
+        .route(
+            "/log-settings/{scope}",
+            axum::routing::put(routes::set_log_settings),
+        )
         .route(
             "/authed",
             get(routes::list_authed).post(routes::create_authed),

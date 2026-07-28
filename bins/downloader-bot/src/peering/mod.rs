@@ -89,6 +89,20 @@ pub async fn init_peering_endpoint(
                     if let Err(re) = reconnect().await {
                         warn!(?re, "reconnect failed after heartbeat failure");
                     }
+                    continue;
+                }
+                match RpcClient::get_log_settings().await {
+                    Ok(app_peer_comms::rpc::request::LogSettingsResult::Ok(settings)) => {
+                        let settings = app_logger::LogFilterSettings {
+                            console: settings.console,
+                            file: settings.file,
+                        };
+                        if let Err(e) = app_logger::apply_log_filter_settings(&settings) {
+                            warn!(?e, "Failed to apply dynamic log settings");
+                        }
+                    }
+                    Ok(result) => debug!(?result, "central did not return log settings"),
+                    Err(e) => debug!(?e, "log settings request failed"),
                 }
             }
         });

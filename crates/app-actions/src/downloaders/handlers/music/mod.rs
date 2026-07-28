@@ -1,10 +1,7 @@
 pub mod spotifydown;
 pub mod yams;
 
-use std::{
-    path::{Path, PathBuf},
-    sync::LazyLock,
-};
+use std::{path::PathBuf, sync::LazyLock};
 
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -46,7 +43,7 @@ impl Downloader for Music {
                 continue;
             }
 
-            match handler.download(req.download_dir(), song_url).await {
+            match handler.download(req).await {
                 Ok(path) => {
                     return Ok(DownloadResult {
                         path,
@@ -55,6 +52,11 @@ impl Downloader for Music {
                 }
                 Err(e) => {
                     warn!(?e, "Failed to download song");
+                    if let Some(error @ DownloaderError::ExceedsMaxFilesize { .. }) =
+                        e.downcast_ref::<DownloaderError>()
+                    {
+                        return Err(error.clone());
+                    }
                 }
             }
         }
@@ -95,14 +97,14 @@ impl DownloadHandler {
         self.provider.enabled()
     }
 
-    pub async fn download(&self, download_dir: &Path, url: &Url) -> Result<PathBuf, anyhow::Error> {
-        self.provider.download(download_dir, url).await
+    pub async fn download(&self, request: &DownloadRequest) -> Result<PathBuf, anyhow::Error> {
+        self.provider.download(request).await
     }
 }
 
 #[async_trait::async_trait]
 trait Handler: std::fmt::Debug + Send + Sync {
-    async fn download(&self, download_dir: &Path, song_url: &Url) -> anyhow::Result<PathBuf>;
+    async fn download(&self, request: &DownloadRequest) -> anyhow::Result<PathBuf>;
 
     fn supports(&self, song_url: &Url) -> bool;
 

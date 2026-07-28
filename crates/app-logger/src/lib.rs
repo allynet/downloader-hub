@@ -7,7 +7,7 @@ use std::{
 };
 
 use app_config::LogFormat;
-use tracing::{Level, debug, trace, warn};
+use tracing::{Level, debug, trace};
 use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, Layer, Registry, filter::Directive, fmt, prelude::*};
 
@@ -24,6 +24,7 @@ type FileWriterFn = Box<dyn Fn() -> MaybeFileWriter + Send + Sync>;
 struct ReloadBridge {
     apply: Box<dyn Fn(EnvFilter) -> Result<(), String> + Send + Sync>,
     current: Box<dyn Fn() -> Result<EnvFilter, String> + Send + Sync>,
+    initial: EnvFilter,
 }
 
 impl ReloadBridge {
@@ -54,6 +55,12 @@ pub struct LogOptions {
     log_file: Option<PathBuf>,
     console_format: LogFormat,
     file_format: LogFormat,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct LogFilterSettings {
+    pub console: Option<String>,
+    pub file: Option<String>,
 }
 
 impl LogOptions {
@@ -241,9 +248,11 @@ fn finish_init<S, F>(
         + Sync
         + 'static,
 {
+    let initial_console_filter = console_filter.clone();
     let (console_filter, console_handle) = tracing_subscriber::reload::Layer::new(console_filter);
     let stderr_filtered = stderr_layer.with_filter(console_filter);
 
+    let initial_file_filter = file_filter.clone();
     let (file_filter, file_handle) = tracing_subscriber::reload::Layer::new(file_filter);
     let file_filtered = file_layer.with_filter(file_filter);
 
@@ -263,6 +272,7 @@ fn finish_init<S, F>(
                     .clone_current()
                     .ok_or_else(|| "Failed to clone current log level".to_string())
             }),
+            initial_console_filter,
         ),
         "Logger was already initialized"
     );
@@ -279,6 +289,7 @@ fn finish_init<S, F>(
                     .clone_current()
                     .ok_or_else(|| "Failed to clone current log level".to_string())
             }),
+            initial_file_filter,
         ),
         "Logger was already initialized"
     );
@@ -294,8 +305,14 @@ fn store_reload_handle(
     cell: &OnceLock<ReloadBridge>,
     apply: Box<dyn Fn(EnvFilter) -> Result<(), String> + Send + Sync>,
     current: Box<dyn Fn() -> Result<EnvFilter, String> + Send + Sync>,
+    initial: EnvFilter,
 ) -> bool {
-    cell.set(ReloadBridge { apply, current }).is_ok()
+    cell.set(ReloadBridge {
+        apply,
+        current,
+        initial,
+    })
+    .is_ok()
 }
 
 fn build_levels(level: Option<Level>) -> Vec<(&'static str, Level)> {
@@ -416,29 +433,57 @@ pub fn set_file_log_level(log_level: &str) -> Result<(), Box<dyn std::error::Err
 }
 
 fn set_filter(handle: &ReloadBridge, log_level: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut base_filter = EnvFilter::builder()
-        .with_default_directive(Level::INFO.into())
-        .parse_lossy("info");
+    handle
+        .set_filter(parse_filter(log_level)?)
+        .map_err(std::convert::Into::into)
+}
 
-    let set_directives = log_level
-        .split(',')
-        .filter(|s| !s.is_empty())
-        .filter_map(|s| match s.parse() {
-            Ok(d) => Some(d),
-            Err(err) => {
-                warn!(directive = ?s, ?err, "Failed to parse log level directive");
-                None
-            }
-        })
-        .collect::<Vec<Directive>>();
+pub fn validate_filter(filter: &str) -> Result<(), Box<dyn std::error::Error>> {
+    parse_filter(filter).map(|_| ())
+}
 
-    for d in set_directives {
-        base_filter = base_filter.add_directive(d);
+pub fn apply_log_filter_settings(
+    settings: &LogFilterSettings,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let console_handle = CONSOLE_RELOAD_HANDLE
+        .get()
+        .expect("Logger was not initialized");
+    let file_handle = FILE_RELOAD_HANDLE
+        .get()
+        .expect("Logger was not initialized");
+
+    let console = settings
+        .console
+        .as_deref()
+        .map(parse_filter)
+        .transpose()?
+        .unwrap_or_else(|| console_handle.initial.clone());
+    let file = settings
+        .file
+        .as_deref()
+        .map(parse_filter)
+        .transpose()?
+        .unwrap_or_else(|| file_handle.initial.clone());
+
+    let previous_console = console_handle.current_filter()?;
+    let previous_file = file_handle.current_filter()?;
+    if let Err(error) = console_handle.set_filter(console) {
+        return Err(error.into());
+    }
+    if let Err(error) = file_handle.set_filter(file) {
+        _ = console_handle.set_filter(previous_console);
+        _ = file_handle.set_filter(previous_file);
+        return Err(error.into());
     }
 
-    handle
-        .set_filter(base_filter)
-        .map_err(std::convert::Into::into)
+    Ok(())
+}
+
+fn parse_filter(filter: &str) -> Result<EnvFilter, Box<dyn std::error::Error>> {
+    if filter.trim().is_empty() {
+        return Err("log filter cannot be empty".into());
+    }
+    EnvFilter::try_new(filter).map_err(Into::into)
 }
 
 pub fn update_log_level(log_level: &str) -> Result<(), Box<dyn std::error::Error>> {

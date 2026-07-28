@@ -7,20 +7,19 @@ use std::{
 
 use app_helpers::file_type::{infer_file_type, mime};
 use futures::{StreamExt, stream::FuturesUnordered};
+use size::Size;
 use teloxide::types::{
     InputFile, InputMedia, InputMediaAudio, InputMediaDocument, InputMediaPhoto, InputMediaVideo,
 };
 use tokio::sync::Mutex;
 use tracing::trace;
 
-use crate::cmd::telegram::bot::TelegramBot;
-
 type MediaGroup = (Vec<InputMedia>, Vec<PathBuf>);
 
 #[tracing::instrument(skip_all)]
 pub async fn files_to_input_media_groups<TFiles, TFile>(
     files: TFiles,
-    max_size: u64,
+    max_size: Size,
 ) -> (Vec<MediaGroup>, Vec<(PathBuf, String)>)
 where
     TFiles: IntoIterator<Item = TFile> + Send + std::fmt::Debug,
@@ -156,36 +155,33 @@ struct FileInfoWithMedia {
 
 fn chunk(
     items: Vec<FileInfoWithMedia>,
-    max_size_bytes: u64,
+    max_size: Size,
 ) -> (Vec<Vec<FileInfoWithMedia>>, Vec<(PathBuf, String)>) {
     let mut failed = vec![];
     let mut res = vec![];
-    let mut res_size = 0_u64;
+    let mut res_size = Size::from_const(0);
     let mut res_item = vec![];
     for item in items {
         let path = item.file_info.path.clone();
-        let size = item.file_info.metadata.len();
+        let size = Size::from_const(item.file_info.metadata.len().cast_signed());
 
         if res_item.len() >= 10 {
             res.push(res_item);
             res_item = vec![];
-            res_size = 0;
+            res_size = Size::from_const(0);
         }
 
-        if size > max_size_bytes {
-            trace!(?path, ?size, ?max_size_bytes, "File is too large");
+        if size > max_size {
+            trace!(?path, ?size, ?max_size, "File is too large");
             {
-                failed.push((
-                    path,
-                    format!("file is too large: {} > {}", size, max_size_bytes),
-                ));
+                failed.push((path, format!("file is too large: {} > {}", size, max_size)));
             }
             continue;
         }
 
-        if size + res_size > TelegramBot::max_payload_size().bytes().cast_unsigned() {
+        if size + res_size > max_size {
             res.push(res_item);
-            res_size = 0;
+            res_size = Size::from_const(0);
             res_item = vec![];
         }
 

@@ -27,6 +27,7 @@ serde.workspace = true
 serde_json.workspace = true
 serenity = "0.12.4"
 shlex = "2.0.1"
+size.workspace = true
 teloxide = { version = "0.17.0", default-features = false, features = ["cache-me", "macros", "rustls", "trace-adaptor"] }
 thiserror.workspace = true
 tikv-jemallocator.workspace = true

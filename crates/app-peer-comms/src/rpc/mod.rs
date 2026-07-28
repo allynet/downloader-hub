@@ -86,4 +86,7 @@ pub enum CentralProtocol {
     WorkRequestListMineInProgress(request::WorkRequestListMineInProgress),
     #[rpc(tx = oneshot::Sender<WorkRequestFailDeliveryResult>)]
     WorkRequestFailDelivery(request::WorkRequestFailDelivery),
+
+    #[rpc(tx = oneshot::Sender<request::LogSettingsResult>)]
+    GetLogSettings(request::GetLogSettings),
 }

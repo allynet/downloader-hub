@@ -1,8 +1,4 @@
-use std::{
-    path::{Path, PathBuf},
-    sync::LazyLock,
-    time::Duration,
-};
+use std::{path::PathBuf, sync::LazyLock, time::Duration};
 
 use app_helpers::domain::DomainParser;
 use app_requests::Client;
@@ -24,8 +20,10 @@ pub struct SpotifydownProvider;
 
 #[async_trait::async_trait]
 impl Handler for SpotifydownProvider {
-    #[tracing::instrument(skip(self, song_url), fields(url = ?song_url.as_str()))]
-    async fn download(&self, download_dir: &Path, song_url: &Url) -> anyhow::Result<PathBuf> {
+    #[tracing::instrument(skip(self, request), fields(url = ?request.url.url().as_str()))]
+    async fn download(&self, request: &DownloadRequest) -> anyhow::Result<PathBuf> {
+        let download_dir = request.download_dir();
+        let song_url = request.url.url();
         debug!("Downloading song");
 
         let download_url = Self::get_download_url(song_url).await.map_err(|e| {
@@ -45,7 +43,10 @@ impl Handler for SpotifydownProvider {
         debug!(?download_url, "Download URL found. Downloading song.");
 
         Generic
-            .download(&DownloadRequest::from_url(&download_url, download_dir))
+            .download(
+                &DownloadRequest::from_url(&download_url, download_dir)
+                    .with_downloader_options(request.downloader_options.clone()),
+            )
             .await
             .map(|x| x.path)
             .map_err(|e| anyhow::anyhow!(e).context("Failed to download song"))

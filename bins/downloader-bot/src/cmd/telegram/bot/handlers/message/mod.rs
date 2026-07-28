@@ -25,7 +25,8 @@ use crate::{
 pub async fn handle_message(msg: &TelegramMessage) -> ResponseResult<()> {
     info!("Adding download request to queue");
 
-    let mut status_message = StatusMessage::from_message(msg);
+    let max_filesize = TelegramBot::effective_max_filesize();
+    let mut status_message = StatusMessage::from_message(msg).with_max_filesize(max_filesize);
 
     let file_id = FileId::from_message(msg);
     let file_urls = {
@@ -69,9 +70,7 @@ pub async fn handle_message(msg: &TelegramMessage) -> ResponseResult<()> {
             RequestInfo::DownloadAndFix({
                 let file_url: FileUrl = file_url.into();
 
-                FileReference::url(
-                    file_url.with_max_filesize(Some(TelegramBot::max_payload_size())),
-                )
+                FileReference::url(file_url.with_max_filesize(Some(max_filesize)))
             }),
             url_status_message.to_metadata(),
             Some(format!("tg-{}-{}-{}", msg.chat.id, msg.id, i)),

@@ -235,3 +235,22 @@ pub enum AdminParkedWorkersResult {
     Unauthorized,
     Ok(Vec<AdminParkedWorker>),
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetLogSettings;
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogSettings {
+    pub console: Option<String>,
+    pub file: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum LogSettingsResult {
+    Ok(LogSettings),
+    Unauthorized,
+    BackendError,
+}

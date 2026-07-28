@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
+use size::Size;
 use teloxide::{
     dispatching::dialogue::GetChatId,
     payloads::{EditMessageTextSetters, SendMessageSetters},
@@ -19,6 +20,8 @@ pub struct StatusMessage {
     msg_id: MessageId,
     #[serde(default)]
     reply_msg_id: Option<MessageId>,
+    #[serde(default)]
+    max_filesize: Option<Size>,
     #[serde(skip)]
     last_text: Option<String>,
 }
@@ -28,6 +31,7 @@ impl StatusMessage {
             chat_id,
             msg_id,
             reply_msg_id,
+            max_filesize: None,
             last_text: None,
         }
     }
@@ -42,6 +46,16 @@ impl StatusMessage {
 
     pub const fn status_msg_id(&self) -> Option<MessageId> {
         self.reply_msg_id
+    }
+
+    pub fn max_filesize(&self) -> Size {
+        self.max_filesize
+            .unwrap_or_else(TelegramBot::effective_max_filesize)
+    }
+
+    pub const fn with_max_filesize(mut self, max_filesize: Size) -> Self {
+        self.max_filesize = Some(max_filesize);
+        self
     }
 
     pub const fn from_message(msg: &Message) -> Self {
@@ -66,6 +80,7 @@ impl StatusMessage {
             chat_id,
             msg_id: self.msg_id,
             reply_msg_id: Some(new_msg.id),
+            max_filesize: self.max_filesize,
             last_text: Some(text.to_string()),
         })
     }

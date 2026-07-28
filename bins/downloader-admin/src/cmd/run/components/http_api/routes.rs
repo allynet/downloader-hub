@@ -5,6 +5,7 @@ use app_database::{
     api::{
         accounts::{AccountPlaceInfo, AccountUserInfo, OptionalField},
         authed::{AuthedFullInfo, AuthedRemoveResult, AuthedRevokeResult, AuthedRotateTokenResult},
+        log_settings::{LogSettings, LogSettingsScope},
         requests::{
             CancelResult, RemoveResult, RequestStatusType, RequestsByStatusPage, RetryResult,
         },
@@ -52,6 +53,83 @@ pub async fn list_counts(_session: AdminSession) -> impl IntoResponse {
         Ok(counts) => V1Response::ok(counts),
         Err(e) => {
             tracing::error!(?e, "list_counts failed");
+            V1Response::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
+        }
+    }
+}
+
+const LOG_SETTINGS_SCOPES: [LogSettingsScope; 5] = [
+    LogSettingsScope::Global,
+    LogSettingsScope::Central,
+    LogSettingsScope::Worker,
+    LogSettingsScope::Bot,
+    LogSettingsScope::Admin,
+];
+
+fn parse_log_settings_scope(scope: &str) -> Option<LogSettingsScope> {
+    LOG_SETTINGS_SCOPES
+        .into_iter()
+        .find(|candidate| candidate.as_str() == scope)
+}
+
+pub async fn list_log_settings(_session: AdminSession) -> impl IntoResponse {
+    match Database::global().log_settings_list().await {
+        Ok(rows) => {
+            let settings = LOG_SETTINGS_SCOPES.map(|scope| {
+                rows.iter()
+                    .find(|setting| setting.scope == scope)
+                    .cloned()
+                    .unwrap_or(LogSettings {
+                        scope,
+                        console: None,
+                        file: None,
+                    })
+            });
+            V1Response::ok(settings)
+        }
+        Err(e) => {
+            tracing::error!(?e, "list_log_settings failed");
+            V1Response::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetLogSettingsBody {
+    pub console: Option<String>,
+    pub file: Option<String>,
+}
+
+pub async fn set_log_settings(
+    _session: WriteSession,
+    Path(scope): Path<String>,
+    Json(body): Json<SetLogSettingsBody>,
+) -> impl IntoResponse {
+    let Some(scope) = parse_log_settings_scope(&scope) else {
+        return V1Response::<LogSettings>::err(StatusCode::BAD_REQUEST, "invalid scope");
+    };
+    let console = body.console.map(|value| value.trim().to_string());
+    let file = body.file.map(|value| value.trim().to_string());
+    for filter in [console.as_deref(), file.as_deref()].into_iter().flatten() {
+        if let Err(e) = app_logger::validate_filter(filter) {
+            return V1Response::<LogSettings>::err(
+                StatusCode::BAD_REQUEST,
+                format!("invalid log filter: {e}"),
+            );
+        }
+    }
+
+    match Database::global()
+        .log_settings_set(scope, console.clone(), file.clone())
+        .await
+    {
+        Ok(()) => V1Response::ok(LogSettings {
+            scope,
+            console,
+            file,
+        }),
+        Err(e) => {
+            tracing::error!(?e, "set_log_settings failed");
             V1Response::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         }
     }

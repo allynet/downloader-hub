@@ -34,8 +34,10 @@ impl Downloader for Generic {
     async fn download(&self, request: &DownloadRequest) -> DownloaderReturn {
         match self.download_one(request).await {
             Ok(x) => Ok(x),
-            Err(e) if request.fallibility().can_fail() => Err(DownloaderError::FallibleFailed(e)),
-            Err(e) => Err(DownloaderError::Error(e)),
+            Err(DownloaderError::Error(e)) if request.fallibility().can_fail() => {
+                Err(DownloaderError::FallibleFailed(e))
+            }
+            Err(e) => Err(e),
         }
     }
 }
@@ -78,10 +80,11 @@ impl Generic {
         GenericDownloaderOptions::default()
     }
 
+    #[allow(clippy::too_many_lines)]
     pub async fn download_one(
         &self,
         request_info: &DownloadRequest,
-    ) -> Result<DownloadResult, String> {
+    ) -> Result<DownloadResult, DownloaderError> {
         let url = &request_info.url;
         let options = request_info
             .downloader_options::<GenericDownloaderOptions>()
@@ -91,7 +94,9 @@ impl Generic {
 
         info!(?url, dir = ?request_info.download_dir(), "Downloading with generic downloader");
 
-        let mut res = Client::request_from_url(url)?.headers(url.headers().clone());
+        let mut res = Client::request_from_url(url)
+            .map_err(DownloaderError::Error)?
+            .headers(url.headers().clone());
 
         if let Some(timeout) = options.timeout {
             let relative = jiff::Timestamp::now().to_zoned(TimeZone::UTC);
@@ -107,9 +112,16 @@ impl Generic {
         let mut res = res
             .send()
             .await
-            .map_err(|e| format!("Failed to send request: {:?}", e))?
+            .map_err(|e| DownloaderError::Error(format!("Failed to send request: {e:?}")))?
             .error_for_status()
-            .map_err(|e| format!("Failed to get response: {:?}", e))?;
+            .map_err(|e| DownloaderError::Error(format!("Failed to get response: {e:?}")))?;
+
+        let max_filesize = options.max_filesize;
+        if let (Some(limit), Some(content_length)) = (max_filesize, res.content_length())
+            && content_length > limit.bytes().cast_unsigned()
+        {
+            return Err(DownloaderError::ExceedsMaxFilesize { limit });
+        }
 
         let mime_type = res.headers().get(header::CONTENT_TYPE).map(|x| x.to_str());
         debug!(?mime_type, "Got mime type");
@@ -159,31 +171,35 @@ impl Generic {
         debug!(?file_path, "Writing to file");
         let mut out_file = File::create(&file_path)
             .await
-            .map_err(|e| format!("Failed to create file: {:?}", e))?;
+            .map_err(|e| DownloaderError::Error(format!("Failed to create file: {e:?}")))?;
 
-        #[allow(clippy::cast_possible_truncation)]
-        let max_filesize = options
-            .max_filesize
-            .map_or(u64::MAX, |x| x.bytes().cast_unsigned()) as usize;
-        let mut total_bytes_read = 0;
+        let max_bytes = max_filesize.map_or(u64::MAX, |x| x.bytes().cast_unsigned());
+        let mut total_bytes_read = 0_u64;
         while let Some(chunk) = res
             .chunk()
             .await
-            .map_err(|e| format!("Failed to get chunk: {:?}", e))?
+            .map_err(|e| DownloaderError::Error(format!("Failed to get chunk: {e:?}")))?
         {
+            let chunk_len = u64::try_from(chunk.len()).unwrap_or(u64::MAX);
+            total_bytes_read = total_bytes_read.saturating_add(chunk_len);
+            if total_bytes_read > max_bytes {
+                drop(out_file);
+                if let Err(e) = tokio::fs::remove_file(&file_path).await {
+                    debug!(
+                        ?e,
+                        ?file_path,
+                        "Failed to remove oversized partial download"
+                    );
+                }
+                return Err(DownloaderError::ExceedsMaxFilesize {
+                    limit: max_filesize.expect("finite max bytes require a configured limit"),
+                });
+            }
+
             out_file
                 .write_all(&chunk)
                 .await
-                .map_err(|e| format!("Failed to write chunk: {:?}", e))?;
-
-            total_bytes_read += chunk.len();
-
-            if total_bytes_read > max_filesize {
-                return Err(format!(
-                    "Max filesize ({} bytes) exceeded ({} bytes)",
-                    max_filesize, total_bytes_read
-                ));
-            }
+                .map_err(|e| DownloaderError::Error(format!("Failed to write chunk: {e:?}")))?;
         }
 
         Ok(DownloadResult {

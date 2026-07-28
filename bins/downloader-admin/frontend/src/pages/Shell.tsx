@@ -11,6 +11,7 @@ const NAV = [
   { to: "/tokens", label: "Tokens" },
   { to: "/accounts", label: "Accounts" },
   { to: "/restrictions", label: "Restrictions" },
+  { to: "/logging", label: "Logging" },
   { to: "/metrics", label: "Metrics" },
 ] as const;
 
@@ -23,10 +24,10 @@ export function Shell() {
   return (
     <div className="min-h-screen">
       <header className="border-b bg-card">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3">
+          <div className="flex min-w-0 items-center gap-6">
             <span className="font-semibold">Downloader Hub</span>
-            <nav className="flex gap-1">
+            <nav className="flex gap-1 overflow-x-auto">
               {NAV.map((item) => {
                 const active =
                   item.to === "/"

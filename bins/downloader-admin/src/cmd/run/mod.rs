@@ -76,6 +76,14 @@ async fn async_run(config: AdminConfig) -> CmdResult {
         ("Central client", Ok(()))
     });
 
+    handles.spawn(keep_running(
+        "Log settings",
+        Box::new(components::log_settings::run),
+        RetryConfig::new()
+            .with_retry_delays(RETRY_DELAYS.clone())
+            .with_reset_retries_after(Some(FIVE_MINS)),
+    ));
+
     while let Some(res) = handles.join_next().await {
         match res {
             Ok((name, Ok(()))) => info!(component = name, "Component exited successfully"),

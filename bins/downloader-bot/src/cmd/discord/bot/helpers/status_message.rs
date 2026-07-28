@@ -8,6 +8,7 @@ use serenity::{
     },
     http::{Http, HttpError},
 };
+use size::Size;
 use tracing::{debug, trace, warn};
 
 use super::super::discord_bot::DiscordBot;
@@ -22,6 +23,8 @@ pub struct StatusMessage {
     status_msg_id: Option<MessageId>,
     #[serde(default)]
     last_content: Option<String>,
+    #[serde(default)]
+    max_filesize: Option<Size>,
 }
 
 impl StatusMessage {
@@ -37,6 +40,7 @@ impl StatusMessage {
             author_id,
             status_msg_id,
             last_content: None,
+            max_filesize: None,
         }
     }
 
@@ -56,6 +60,16 @@ impl StatusMessage {
 
     pub const fn status_msg_id(&self) -> Option<MessageId> {
         self.status_msg_id
+    }
+
+    pub fn max_filesize(&self) -> Size {
+        self.max_filesize
+            .unwrap_or_else(DiscordBot::safe_max_filesize)
+    }
+
+    pub const fn with_max_filesize(mut self, max_filesize: Size) -> Self {
+        self.max_filesize = Some(max_filesize);
+        self
     }
 
     pub const fn from_message(msg: &Message) -> Self {
@@ -79,6 +93,7 @@ impl StatusMessage {
             author_id: self.author_id,
             status_msg_id: Some(new_msg.id),
             last_content: Some(text.to_string()),
+            max_filesize: self.max_filesize,
         })
     }
 

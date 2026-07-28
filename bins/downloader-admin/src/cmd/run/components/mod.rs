@@ -13,6 +13,7 @@ use tracing::{debug, info, warn};
 
 pub mod central;
 pub mod http_api;
+pub mod log_settings;
 
 pub type ComponentError = Box<dyn std::error::Error + Send + Sync>;
 pub type ComponentResult = Result<(), ComponentError>;

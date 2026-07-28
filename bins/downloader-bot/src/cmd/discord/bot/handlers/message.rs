@@ -7,7 +7,11 @@ use app_peer_comms::message::v1::{
     },
 };
 use linkify::{LinkFinder, LinkKind};
-use serenity::{all::Message, prelude::Context};
+use serenity::{
+    all::{Message, PremiumTier},
+    prelude::Context,
+};
+use size::Size;
 use tracing::{info, warn};
 use url::Url;
 
@@ -25,7 +29,8 @@ use crate::{
 pub async fn handle_download_request(ctx: &Context, msg: &Message, mut urls: Vec<Url>) {
     info!(url_count = urls.len(), "Adding download request to queue");
 
-    let mut status_message = StatusMessage::from_message(msg);
+    let max_filesize = effective_max_filesize(ctx, msg).await;
+    let mut status_message = StatusMessage::from_message(msg).with_max_filesize(max_filesize);
 
     urls.sort();
     urls.dedup();
@@ -80,7 +85,7 @@ pub async fn handle_download_request(ctx: &Context, msg: &Message, mut urls: Vec
         }
 
         let file_url: FileUrl = url.into();
-        let file_url = file_url.with_max_filesize(Some(DiscordBot::max_payload_size()));
+        let file_url = file_url.with_max_filesize(Some(max_filesize));
         let file_ref = FileReference::url(file_url);
 
         let result = match RpcClient::work_request_create(
@@ -141,6 +146,27 @@ pub async fn handle_download_request(ctx: &Context, msg: &Message, mut urls: Vec
     }
 
     status_message.delete_message().await;
+}
+
+async fn effective_max_filesize(ctx: &Context, msg: &Message) -> Size {
+    let premium_tier = match msg.guild_id {
+        None => None,
+        Some(guild_id) => {
+            let cached = ctx.cache.guild(guild_id).map(|guild| guild.premium_tier);
+            match cached {
+                Some(tier) => Some(tier),
+                None => match guild_id.to_partial_guild(&ctx.http).await {
+                    Ok(guild) => Some(guild.premium_tier),
+                    Err(e) => {
+                        warn!(?e, ?guild_id, "failed to detect Discord guild premium tier");
+                        Some(PremiumTier::Tier0)
+                    }
+                },
+            }
+        }
+    };
+
+    DiscordBot::max_payload_size().min(DiscordBot::destination_max_filesize(premium_tier))
 }
 
 pub fn urls_in_message(msg: &Message) -> Vec<Url> {

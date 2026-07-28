@@ -89,6 +89,10 @@ impl RpcClient {
         Self::client().rpc(request::Heartbeat).await
     }
 
+    pub async fn get_log_settings() -> Result<request::LogSettingsResult, irpc::Error> {
+        Self::client().rpc(request::GetLogSettings).await
+    }
+
     pub async fn work_request_free(request_id: Arc<str>) -> Result<FreeResult, irpc::Error> {
         Self::client()
             .rpc(request::WorkRequestFree { request_id })

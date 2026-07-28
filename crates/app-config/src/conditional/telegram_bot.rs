@@ -10,7 +10,7 @@ use crate::validators::directory::{
     validate_is_writable_directory, value_parser_parse_valid_directory,
 };
 
-pub const OFFICIAL_API_URL: &str = "https://api.telegram.org";
+pub const OFFICIAL_API_URL: &str = "https://api.telegram.org/";
 
 #[derive(derive_more::Debug, Clone, Serialize, Deserialize, Args, Validate)]
 #[clap(next_help_heading = "Telegram bot options")]

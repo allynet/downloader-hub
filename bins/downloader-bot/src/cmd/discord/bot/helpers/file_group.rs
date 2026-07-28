@@ -5,6 +5,7 @@ use std::{
 
 use futures::{StreamExt, stream::FuturesUnordered};
 use serenity::all::CreateAttachment;
+use size::Size;
 use tokio::sync::Mutex;
 use tracing::trace;
 
@@ -20,7 +21,7 @@ fn attachment_filename(path: &Path, suggested_name: Option<&Path>) -> Option<Str
 #[tracing::instrument(skip_all)]
 pub async fn send_attachment_groups<TFiles, TFile, TName, F, Fut>(
     files: TFiles,
-    max_size_bytes: u64,
+    max_size: Size,
     mut on_group: F,
 ) -> Vec<(PathBuf, String)>
 where
@@ -30,24 +31,21 @@ where
     F: FnMut(Vec<CreateAttachment>) -> Fut + Send,
     Fut: Future<Output = Result<(), String>> + Send,
 {
-    trace!(?files, max_size_bytes, "Getting file infos");
+    trace!(?files, ?max_size, "Getting file infos");
     let (file_infos, mut failed) = infos_from_files(files).await;
     trace!(?file_infos, "Got file infos");
 
     let mut current_group: Vec<CreateAttachment> = Vec::new();
     let mut current_group_paths: Vec<PathBuf> = Vec::new();
-    let mut current_group_size: u64 = 0;
+    let mut current_group_size = Size::from_const(0);
 
     for info in file_infos {
         let path = info.path.clone();
-        let size = info.metadata.len();
+        let size = Size::from_const(info.metadata.len().cast_signed());
 
-        if size > max_size_bytes {
-            trace!(?path, ?size, ?max_size_bytes, "File is too large");
-            failed.push((
-                path,
-                format!("file is too large: {} > {}", size, max_size_bytes),
-            ));
+        if size > max_size {
+            trace!(?path, ?size, ?max_size, "File is too large");
+            failed.push((path, format!("file is too large: {} > {}", size, max_size)));
             continue;
         }
 
@@ -72,13 +70,14 @@ where
 
         if !current_group.is_empty()
             && (current_group.len() >= DISCORD_MAX_ATTACHMENTS_PER_MESSAGE
-                || current_group_size + size > max_size_bytes)
+                || current_group_size + size > max_size)
         {
             trace!(
                 group_len = current_group.len(),
-                current_group_size, "Flushing group"
+                ?current_group_size,
+                "Flushing group"
             );
-            current_group_size = 0;
+            current_group_size = Size::from_const(0);
             let group_paths = std::mem::take(&mut current_group_paths);
             if let Err(e) = on_group(std::mem::take(&mut current_group)).await {
                 for p in group_paths {

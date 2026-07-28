@@ -63,6 +63,20 @@ pub async fn run(
                 tokio::time::sleep(Duration::from_millis(30_000 + jitter)).await;
                 if let Err(e) = crate::cmd::work::rpc::RpcClient::heartbeat().await {
                     debug!(?e, "heartbeat failed");
+                    continue;
+                }
+                match crate::cmd::work::rpc::RpcClient::get_log_settings().await {
+                    Ok(app_peer_comms::rpc::request::LogSettingsResult::Ok(settings)) => {
+                        let settings = app_logger::LogFilterSettings {
+                            console: settings.console,
+                            file: settings.file,
+                        };
+                        if let Err(e) = app_logger::apply_log_filter_settings(&settings) {
+                            error!(?e, "Failed to apply dynamic log settings");
+                        }
+                    }
+                    Ok(result) => debug!(?result, "central did not return log settings"),
+                    Err(e) => debug!(?e, "log settings request failed"),
                 }
             }
         });

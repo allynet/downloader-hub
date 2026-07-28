@@ -2051,6 +2051,7 @@ dependencies = [
  "serde_json",
  "serenity",
  "shlex",
+ "size",
  "teloxide",
  "thiserror 2.0.18",
  "tikv-jemallocator",

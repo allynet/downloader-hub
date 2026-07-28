@@ -18,6 +18,9 @@ pub mod handlers;
 pub type TeloxideBot =
     teloxide::adaptors::CacheMe<trace::Trace<teloxide::adaptors::DefaultParseMode<teloxide::Bot>>>;
 
+const OFFICIAL_API_MAX_FILESIZE: Size = Size::from_const(50 * size::MEGABYTE);
+const LOCAL_API_MAX_FILESIZE: Size = Size::from_const(2 * size::GIGABYTE);
+
 static TELEGRAM_BOT: OnceLock<TelegramBot> = OnceLock::new();
 
 pub struct TelegramBot {
@@ -62,6 +65,16 @@ impl TelegramBot {
     #[inline]
     pub fn max_payload_size() -> Size {
         Self::instance().config.max_payload_size
+    }
+
+    pub fn effective_max_filesize() -> Size {
+        let configured = Self::max_payload_size();
+        let platform = if Self::instance().config.is_api_url_local() {
+            LOCAL_API_MAX_FILESIZE
+        } else {
+            OFFICIAL_API_MAX_FILESIZE
+        };
+        configured.min(platform)
     }
 
     #[must_use]

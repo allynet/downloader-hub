@@ -40,8 +40,7 @@ impl PlatformDelivery for StatusMessage {
         &self,
         files: &[(TempFile, Option<PathBuf>)],
     ) -> Vec<(Option<PathBuf>, String)> {
-        let max_bytes = u64::try_from(DiscordBot::max_payload_size().bytes())
-            .expect("max payload size must not be negative");
+        let max_bytes = self.max_filesize();
 
         let reference = self.original_message_reference();
         let channel_id = self.channel_id();

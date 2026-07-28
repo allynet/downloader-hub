@@ -1,12 +1,15 @@
 use std::{
     collections::HashMap,
-    sync::{Arc, LazyLock, Mutex, OnceLock},
+    sync::{Arc, LazyLock, Mutex, OnceLock, RwLock},
     time::{Duration, Instant},
 };
 
 use app_database::{
     Database,
-    api::authed::AuthedInfoResponse,
+    api::{
+        authed::AuthedInfoResponse,
+        log_settings::{LogSettings, LogSettingsScope, resolve_log_settings},
+    },
     entity::{accounts::Platform, authed::AuthedForRole},
 };
 use app_peer_comms::{
@@ -39,7 +42,7 @@ use app_peer_comms::{
     },
     rpc::{
         AuthResult, CentralProtocol, CentralRequest,
-        request::{Capabilities, CapabilitiesSummary},
+        request::{Capabilities, CapabilitiesSummary, LogSettingsResult},
     },
 };
 use arc_swap::ArcSwapOption;
@@ -148,6 +151,38 @@ pub fn distributor() -> Arc<WorkDistributor> {
 }
 
 static CENTRAL_ID: OnceLock<String> = OnceLock::new();
+static LOG_SETTINGS: OnceLock<RwLock<Vec<LogSettings>>> = OnceLock::new();
+
+pub fn init_log_settings() {
+    _ = LOG_SETTINGS.set(RwLock::new(Vec::new()));
+}
+
+pub fn set_log_settings(settings: Vec<LogSettings>) {
+    *LOG_SETTINGS
+        .get()
+        .expect("log settings not initialized")
+        .write()
+        .expect("log settings lock poisoned") = settings;
+}
+
+fn log_settings_for(role: &AuthedForRole) -> Option<app_peer_comms::rpc::request::LogSettings> {
+    let scope = match role {
+        AuthedForRole::Worker => LogSettingsScope::Worker,
+        AuthedForRole::Bot => LogSettingsScope::Bot,
+        AuthedForRole::Admin => return None,
+    };
+    let settings = LOG_SETTINGS
+        .get()
+        .expect("log settings not initialized")
+        .read()
+        .expect("log settings lock poisoned");
+    let effective = resolve_log_settings(&settings, scope);
+    drop(settings);
+    Some(app_peer_comms::rpc::request::LogSettings {
+        console: effective.console,
+        file: effective.file,
+    })
+}
 
 pub fn init_central_id(id: String) {
     _ = CENTRAL_ID.set(id);
@@ -1032,6 +1067,12 @@ impl CentralRpcServer {
                             .await;
                     }
                 }
+            }
+            CentralRequest::GetLogSettings(r) => {
+                let WithChannels { tx, .. } = r;
+                let result = log_settings_for(&role)
+                    .map_or(LogSettingsResult::Unauthorized, LogSettingsResult::Ok);
+                let _ = tx.send(result).await;
             }
         }
     }

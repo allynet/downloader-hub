@@ -196,7 +196,7 @@ async fn download_and_fix(request_id: Arc<str>, file_reference: FileReference, t
                 &format!("Downloaded {} file(s) from URL. Fixing...", paths.len()),
             );
 
-            fix_stage_and_deliver(request_id, paths).await;
+            fix_stage_and_deliver(request_id, paths, url.max_filesize).await;
         }
         FileReference::BlobTicket(ticket) => {
             trace!(?request_id, "Downloading files from peer blob ticket");
@@ -231,20 +231,54 @@ async fn download_and_fix(request_id: Arc<str>, file_reference: FileReference, t
                 "Downloaded files from peer. Fixing...",
             );
 
-            fix_stage_and_deliver(request_id, vec![dest]).await;
+            fix_stage_and_deliver(request_id, vec![dest], None).await;
         }
     }
 }
 
-async fn fix_stage_and_deliver(request_id: Arc<str>, paths: Vec<std::path::PathBuf>) {
+#[allow(clippy::too_many_lines)]
+async fn fix_stage_and_deliver(
+    request_id: Arc<str>,
+    paths: Vec<std::path::PathBuf>,
+    max_filesize: Option<app_config::common::Size>,
+) {
     let pe = PeeringEndpoint::global();
 
     let mut fixed_paths = Vec::new();
+    let mut exceeded_max_filesize = false;
     {
         let mut errs = Vec::new();
         for path in paths {
             match app_actions::fix_file(path).await {
-                Ok(x) => fixed_paths.push(x.file_path),
+                Ok(x) => {
+                    let exceeds_limit = if let Some(limit) = max_filesize {
+                        match tokio::fs::metadata(&x.file_path).await {
+                            Ok(metadata) => metadata.len() > limit.bytes().cast_unsigned(),
+                            Err(e) => {
+                                errs.push(format!(
+                                    "Failed to inspect fixed file {:?}: {e}",
+                                    x.file_path
+                                ));
+                                continue;
+                            }
+                        }
+                    } else {
+                        false
+                    };
+
+                    if exceeds_limit {
+                        exceeded_max_filesize = true;
+                        errs.push(
+                            DownloaderError::ExceedsMaxFilesize {
+                                limit: max_filesize
+                                    .expect("exceeded limit requires a configured max filesize"),
+                            }
+                            .original_message(),
+                        );
+                    } else {
+                        fixed_paths.push(x.file_path);
+                    }
+                }
                 Err(e) => errs.push(e.to_string()),
             }
         }
@@ -256,7 +290,15 @@ async fn fix_stage_and_deliver(request_id: Arc<str>, paths: Vec<std::path::PathB
 
     if fixed_paths.is_empty() {
         debug!("No files left to fix");
-        Broadcaster::get().send_work_request_fail(request_id.clone(), "No files left to fix");
+        let reason = if exceeded_max_filesize {
+            DownloaderError::ExceedsMaxFilesize {
+                limit: max_filesize.expect("exceeded limit requires a configured max filesize"),
+            }
+            .original_message()
+        } else {
+            "No files left to fix".to_string()
+        };
+        Broadcaster::get().send_work_request_fail(request_id.clone(), &reason);
         return;
     }
 

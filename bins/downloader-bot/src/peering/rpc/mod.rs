@@ -300,6 +300,10 @@ impl RpcClient {
         Self::client().rpc(request::Heartbeat).await
     }
 
+    pub async fn get_log_settings() -> Result<request::LogSettingsResult, irpc::Error> {
+        Self::client().rpc(request::GetLogSettings).await
+    }
+
     pub async fn get_capabilities()
     -> Result<app_peer_comms::rpc::request::CapabilitiesSummary, irpc::Error> {
         Self::client().rpc(request::GetCapabilities).await

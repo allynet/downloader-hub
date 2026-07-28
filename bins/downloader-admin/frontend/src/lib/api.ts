@@ -148,6 +148,19 @@ export interface RestrictionInfo {
   rule: RestrictionRule;
 }
 
+export type LogSettingsScope =
+  | "global"
+  | "central"
+  | "worker"
+  | "bot"
+  | "admin";
+
+export interface LogSettings {
+  scope: LogSettingsScope;
+  console: string | null;
+  file: string | null;
+}
+
 export type CreateRestrictionBody = {
   user?: AccountRef;
   place?: AccountRef;
@@ -268,6 +281,12 @@ export const api = {
   connections: () =>
     request<{ connections: ConnectionInfo[] }>("GET", "/connections"),
   metrics: () => fetch("/api/admin/metrics").then((r) => r.text()),
+  listLogSettings: () =>
+    request<LogSettings[]>("GET", "/log-settings"),
+  setLogSettings: (
+    scope: LogSettingsScope,
+    body: { console: string | null; file: string | null },
+  ) => request<LogSettings>("PUT", `/log-settings/${scope}`, body),
 
   listAuthed: () => request<AuthedFullInfo[]>("GET", "/authed"),
   createAuthed: (body: {
