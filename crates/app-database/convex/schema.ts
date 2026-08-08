@@ -182,6 +182,8 @@ export const secrets = {
   name: v.string(),
   value: v.string(),
   updatedAt: v.int64(),
+  allowedUsers: v.optional(v.array(accountUserRef)),
+  allowedPlaces: v.optional(v.array(accountPlaceRef)),
 };
 
 export default defineSchema(

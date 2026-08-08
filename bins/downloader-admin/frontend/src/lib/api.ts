@@ -165,6 +165,8 @@ export interface SecretEntry {
   name: string;
   value: string;
   updatedAt: number;
+  allowedUsers: AccountRef[];
+  allowedPlaces: AccountRef[];
 }
 
 export type CreateRestrictionBody = {
@@ -295,8 +297,12 @@ export const api = {
   ) => request<LogSettings>("PUT", `/log-settings/${scope}`, body),
 
   listSecrets: () => request<SecretEntry[]>("GET", "/secrets"),
-  setSecret: (body: { name: string; value: string }) =>
-    request<SecretEntry>("POST", "/secrets", body),
+  setSecret: (body: {
+    name: string;
+    value: string;
+    allowedUsers?: AccountRef[];
+    allowedPlaces?: AccountRef[];
+  }) => request<SecretEntry>("POST", "/secrets", body),
   removeSecret: (name: string) =>
     request<{ removed: boolean }>("DELETE", `/secrets/${encodeURIComponent(name)}`),
 

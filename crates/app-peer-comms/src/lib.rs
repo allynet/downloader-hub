@@ -11,6 +11,7 @@ use app_config::{
     GlobalConfig,
     common::{BlobConfig, PeerCommsCommonConfig},
 };
+pub use app_database::entity::accounts::{AccountPlaceRef, AccountUserRef};
 pub use app_requests::install_default_crypto_provider;
 use futures::StreamExt;
 use iroh::{

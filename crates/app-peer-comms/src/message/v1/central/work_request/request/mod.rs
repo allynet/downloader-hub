@@ -1,5 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
+use app_database::entity::accounts::{AccountPlaceRef, AccountUserRef};
 use serde::{Deserialize, Serialize};
 
 pub mod info;
@@ -16,6 +17,10 @@ pub struct WorkRequest {
     pub errors: Arc<[Arc<str>]>,
     #[serde(default)]
     pub parked: bool,
+    #[serde(default)]
+    pub ordered_by: Option<AccountUserRef>,
+    #[serde(default)]
+    pub ordered_in: Option<AccountPlaceRef>,
 }
 impl WorkRequest {
     #[must_use]
@@ -63,6 +68,8 @@ impl WorkRequest {
                 metadata: self.metadata,
                 status: self.status,
                 errors: self.errors,
+                ordered_by: self.ordered_by,
+                ordered_in: self.ordered_in,
             },
         )
     }
@@ -76,6 +83,10 @@ pub struct WorkRequestMeta {
     pub status: status::WorkRequestStatus,
     #[serde(default)]
     pub errors: Arc<[Arc<str>]>,
+    #[serde(default)]
+    pub ordered_by: Option<AccountUserRef>,
+    #[serde(default)]
+    pub ordered_in: Option<AccountPlaceRef>,
 }
 
 impl WorkRequest {
@@ -109,6 +120,8 @@ impl<'a> TryFrom<&'a app_database::api::requests::RequestInfoResponse> for WorkR
             status: value.status.clone().try_into()?,
             errors: value.errors.clone(),
             parked: false,
+            ordered_by: value.ordered_by.clone(),
+            ordered_in: value.ordered_in.clone(),
         })
     }
 }

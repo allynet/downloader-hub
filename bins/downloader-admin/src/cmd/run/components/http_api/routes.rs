@@ -147,9 +147,14 @@ pub async fn list_secrets(_session: AdminSession) -> impl IntoResponse {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct SetSecretBody {
     pub name: String,
     pub value: String,
+    #[serde(default)]
+    pub allowed_users: Vec<AccountRefBody>,
+    #[serde(default)]
+    pub allowed_places: Vec<AccountRefBody>,
 }
 
 pub async fn set_secret(
@@ -161,11 +166,26 @@ pub async fn set_secret(
     if name.is_empty() {
         return V1Response::<SecretEntry>::err(StatusCode::BAD_REQUEST, "name is required");
     }
-    match Database::global().secrets_set(name, value).await {
+    let allowed_users: Vec<_> = body
+        .allowed_users
+        .iter()
+        .map(AccountRefBody::to_user_ref)
+        .collect();
+    let allowed_places: Vec<_> = body
+        .allowed_places
+        .iter()
+        .map(AccountRefBody::to_place_ref)
+        .collect();
+    match Database::global()
+        .secrets_set(name, value, &allowed_users, &allowed_places)
+        .await
+    {
         Ok(()) => V1Response::ok(SecretEntry {
             name: name.to_string(),
             value: value.to_string(),
             updated_at: 0,
+            allowed_users,
+            allowed_places,
         }),
         Err(e) => {
             tracing::error!(?e, "set_secret failed");

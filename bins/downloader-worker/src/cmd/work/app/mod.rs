@@ -6,7 +6,7 @@ use std::{
 
 use app_config::common::PeerCommsWorkerTicketFromApiConfig;
 use app_peer_comms::{
-    IrohEndpointAddr,
+    AccountPlaceRef, AccountUserRef, IrohEndpointAddr,
     message::v1::{
         central::{
             get_work_item_result::GetWorkItemResult,
@@ -14,7 +14,7 @@ use app_peer_comms::{
         },
         common::file::FileReference,
     },
-    rpc::request::{Capabilities, HandlerEntry},
+    rpc::request::{Capabilities, HandlerEntry, SecretEntry},
 };
 use tracing::{debug, error, info, instrument};
 
@@ -26,11 +26,12 @@ pub(super) mod process;
 
 static HEARTBEAT: OnceLock<()> = OnceLock::new();
 
-static SECRETS: OnceLock<RwLock<HashMap<String, String>>> = OnceLock::new();
+static SECRETS: OnceLock<RwLock<HashMap<String, SecretEntry>>> = OnceLock::new();
 
-pub(super) fn set_secrets(secrets: HashMap<String, String>) {
+pub(super) fn set_secrets(secrets: Vec<SecretEntry>) {
+    let map = secrets.into_iter().map(|s| (s.name.clone(), s)).collect();
     let lock = SECRETS.get_or_init(|| RwLock::new(HashMap::new()));
-    *lock.write().expect("secrets lock poisoned") = secrets;
+    *lock.write().expect("secrets lock poisoned") = map;
 }
 
 fn platform_secret_name(host: &str) -> Option<&'static str> {
@@ -41,10 +42,19 @@ fn platform_secret_name(host: &str) -> Option<&'static str> {
 }
 
 #[must_use]
-pub fn secret_value_for_url(url: &url::Url) -> Option<String> {
+pub fn secret_value_for(
+    url: &url::Url,
+    ordered_by: Option<&AccountUserRef>,
+    ordered_in: Option<&AccountPlaceRef>,
+) -> Option<String> {
     let name = platform_secret_name(url.host_str()?)?;
     let guard = SECRETS.get()?.read().ok()?;
-    guard.get(name).cloned()
+    let entry = guard.get(name)?;
+    let user_ok = entry.allowed_users.is_empty()
+        || ordered_by.is_some_and(|user| entry.allowed_users.contains(user));
+    let place_ok = entry.allowed_places.is_empty()
+        || ordered_in.is_some_and(|place| entry.allowed_places.contains(place));
+    (user_ok && place_ok).then(|| entry.value.clone())
 }
 
 #[instrument(name = "worker", skip_all)]
@@ -149,12 +159,7 @@ async fn refresh_dynamic_settings() {
     }
     match crate::cmd::work::rpc::RpcClient::get_secrets().await {
         Ok(app_peer_comms::rpc::request::SecretsResult::Ok(entries)) => {
-            set_secrets(
-                entries
-                    .into_iter()
-                    .map(|entry| (entry.name, entry.value))
-                    .collect(),
-            );
+            set_secrets(entries);
         }
         Ok(result) => debug!(?result, "central did not return secrets"),
         Err(e) => debug!(?e, "secrets request failed"),

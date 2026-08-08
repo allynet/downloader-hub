@@ -6,7 +6,7 @@ use app_actions::{
 };
 use app_helpers::{futures::task_controller::TaskController, temp_dir::TempDir};
 use app_peer_comms::{
-    IrohBlobTicket, PeeringEndpoint,
+    AccountPlaceRef, AccountUserRef, IrohBlobTicket, PeeringEndpoint,
     message::v1::{
         central::work_request::{WorkRequest, WorkRequestInfo, request::WorkRequestMeta},
         common::file::FileReference,
@@ -43,6 +43,8 @@ pub async fn process_work_request(work_request: WorkRequest) {
 
 async fn process_download_and_fix(request_meta: WorkRequestMeta, file_reference: FileReference) {
     let request_id = request_meta.request_id;
+    let ordered_by = request_meta.ordered_by;
+    let ordered_in = request_meta.ordered_in;
 
     let tmp_dir = TempDir::in_tmp(format!("downloader-agent.download-and-fix.{request_id}"));
     let tmp_dir = match tmp_dir {
@@ -58,7 +60,16 @@ async fn process_download_and_fix(request_meta: WorkRequestMeta, file_reference:
     let mut tc = TaskController::with_timeout(timeout);
 
     let res = tc
-        .spawn(download_and_fix(request_id.clone(), file_reference, tmp_dir).in_current_span())
+        .spawn(
+            download_and_fix(
+                request_id.clone(),
+                ordered_by,
+                ordered_in,
+                file_reference,
+                tmp_dir,
+            )
+            .in_current_span(),
+        )
         .await;
 
     match res {
@@ -77,7 +88,13 @@ async fn process_download_and_fix(request_meta: WorkRequestMeta, file_reference:
 }
 
 #[allow(clippy::too_many_lines)]
-async fn download_and_fix(request_id: Arc<str>, file_reference: FileReference, tmp_dir: TempDir) {
+async fn download_and_fix(
+    request_id: Arc<str>,
+    ordered_by: Option<AccountUserRef>,
+    ordered_in: Option<AccountPlaceRef>,
+    file_reference: FileReference,
+    tmp_dir: TempDir,
+) {
     info!(?file_reference, "Downloading and fixing");
 
     match file_reference {
@@ -90,7 +107,11 @@ async fn download_and_fix(request_id: Arc<str>, file_reference: FileReference, t
 
             debug!(?url, "Downloading files from URL");
 
-            let url = if let Some(cookie) = crate::cmd::work::app::secret_value_for_url(&url.url) {
+            let url = if let Some(cookie) = crate::cmd::work::app::secret_value_for(
+                &url.url,
+                ordered_by.as_ref(),
+                ordered_in.as_ref(),
+            ) {
                 debug!("Injecting platform cookie for URL");
                 url.with_header("cookie", cookie)
             } else {

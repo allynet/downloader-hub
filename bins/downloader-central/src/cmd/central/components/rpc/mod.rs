@@ -1104,6 +1104,8 @@ impl CentralRpcServer {
                                 .map(|s| app_peer_comms::rpc::request::SecretEntry {
                                     name: s.name.clone(),
                                     value: s.value.clone(),
+                                    allowed_users: s.allowed_users.clone(),
+                                    allowed_places: s.allowed_places.clone(),
                                 })
                                 .collect(),
                         )

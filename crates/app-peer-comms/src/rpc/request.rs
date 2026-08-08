@@ -263,6 +263,10 @@ pub struct GetSecrets;
 pub struct SecretEntry {
     pub name: String,
     pub value: String,
+    #[serde(default)]
+    pub allowed_users: Vec<AccountUserRef>,
+    #[serde(default)]
+    pub allowed_places: Vec<AccountPlaceRef>,
 }
 
 impl std::fmt::Debug for SecretEntry {
@@ -270,6 +274,8 @@ impl std::fmt::Debug for SecretEntry {
         f.debug_struct("SecretEntry")
             .field("name", &self.name)
             .field("value", &"[redacted]")
+            .field("allowed_users", &self.allowed_users)
+            .field("allowed_places", &self.allowed_places)
             .finish()
     }
 }
