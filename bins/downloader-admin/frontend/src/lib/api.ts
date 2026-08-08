@@ -161,6 +161,12 @@ export interface LogSettings {
   file: string | null;
 }
 
+export interface SecretEntry {
+  name: string;
+  value: string;
+  updatedAt: number;
+}
+
 export type CreateRestrictionBody = {
   user?: AccountRef;
   place?: AccountRef;
@@ -287,6 +293,12 @@ export const api = {
     scope: LogSettingsScope,
     body: { console: string | null; file: string | null },
   ) => request<LogSettings>("PUT", `/log-settings/${scope}`, body),
+
+  listSecrets: () => request<SecretEntry[]>("GET", "/secrets"),
+  setSecret: (body: { name: string; value: string }) =>
+    request<SecretEntry>("POST", "/secrets", body),
+  removeSecret: (name: string) =>
+    request<{ removed: boolean }>("DELETE", `/secrets/${encodeURIComponent(name)}`),
 
   listAuthed: () => request<AuthedFullInfo[]>("GET", "/authed"),
   createAuthed: (body: {

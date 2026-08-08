@@ -90,6 +90,13 @@ async fn download_and_fix(request_id: Arc<str>, file_reference: FileReference, t
 
             debug!(?url, "Downloading files from URL");
 
+            let url = if let Some(cookie) = crate::cmd::work::app::secret_value_for_url(&url.url) {
+                debug!("Injecting platform cookie for URL");
+                url.with_header("cookie", cookie)
+            } else {
+                url
+            };
+
             let mut paths = Vec::new();
             let mut errs = Vec::new();
             {
@@ -117,7 +124,10 @@ async fn download_and_fix(request_id: Arc<str>, file_reference: FileReference, t
                     }
                 };
 
-                debug!(?info, "Extracted info");
+                debug!(
+                    urls = ?info.urls.iter().map(|u| u.url.url().as_str()).collect::<Vec<_>>(),
+                    "Extracted info"
+                );
 
                 let download_requests = DownloadRequest::from_extracted_info(&info, tmp_dir.path());
 

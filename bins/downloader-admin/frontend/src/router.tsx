@@ -16,6 +16,7 @@ import { AccountsPage } from "@/pages/AccountsPage";
 import { MetricsPage } from "@/pages/MetricsPage";
 import { RestrictionsPage } from "@/pages/RestrictionsPage";
 import { LoggingPage } from "@/pages/LoggingPage";
+import { SecretsPage } from "@/pages/SecretsPage";
 
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
@@ -83,6 +84,11 @@ const loggingRoute = createRoute({
   path: "/logging",
   component: LoggingPage,
 });
+const secretsRoute = createRoute({
+  getParentRoute: () => authedLayout,
+  path: "/secrets",
+  component: SecretsPage,
+});
 
 const routeTree = rootRoute.addChildren([
   loginRoute,
@@ -94,6 +100,7 @@ const routeTree = rootRoute.addChildren([
     accountsRoute,
     restrictionsRoute,
     loggingRoute,
+    secretsRoute,
     metricsRoute,
   ]),
 ]);

@@ -177,6 +177,13 @@ export const logSettings = {
   file: v.optional(v.string()),
 };
 
+export const secretsId = "downloader_hub_secrets" as const;
+export const secrets = {
+  name: v.string(),
+  value: v.string(),
+  updatedAt: v.int64(),
+};
+
 export default defineSchema(
   {
     [authedId]: defineTable(authed).index("by_token", ["token"]),
@@ -207,6 +214,8 @@ export default defineSchema(
       .index("by_last_seen", ["lastSeen"]),
 
     [logSettingsId]: defineTable(logSettings).index("by_scope", ["scope"]),
+
+    [secretsId]: defineTable(secrets).index("by_name", ["name"]),
 
     [accountUserId]: defineTable(accountUser).index("by_platform_id", [
       "platform",

@@ -1,4 +1,8 @@
-use std::{sync::OnceLock, time::Duration};
+use std::{
+    collections::HashMap,
+    sync::{OnceLock, RwLock},
+    time::Duration,
+};
 
 use app_config::common::PeerCommsWorkerTicketFromApiConfig;
 use app_peer_comms::{
@@ -21,6 +25,27 @@ pub(super) mod helpers;
 pub(super) mod process;
 
 static HEARTBEAT: OnceLock<()> = OnceLock::new();
+
+static SECRETS: OnceLock<RwLock<HashMap<String, String>>> = OnceLock::new();
+
+pub(super) fn set_secrets(secrets: HashMap<String, String>) {
+    let lock = SECRETS.get_or_init(|| RwLock::new(HashMap::new()));
+    *lock.write().expect("secrets lock poisoned") = secrets;
+}
+
+fn platform_secret_name(host: &str) -> Option<&'static str> {
+    match host.to_lowercase().as_str() {
+        "instagram.com" | "www.instagram.com" => Some("instagram"),
+        _ => None,
+    }
+}
+
+#[must_use]
+pub fn secret_value_for_url(url: &url::Url) -> Option<String> {
+    let name = platform_secret_name(url.host_str()?)?;
+    let guard = SECRETS.get()?.read().ok()?;
+    guard.get(name).cloned()
+}
 
 #[instrument(name = "worker", skip_all)]
 pub async fn run(
@@ -56,28 +81,14 @@ pub async fn run(
 
     broadcaster::Broadcaster::init();
 
+    refresh_dynamic_settings().await;
+
     HEARTBEAT.get_or_init(|| {
         tokio::spawn(async {
             loop {
                 let jitter = rand::random_range(0..5_000u64);
                 tokio::time::sleep(Duration::from_millis(30_000 + jitter)).await;
-                if let Err(e) = crate::cmd::work::rpc::RpcClient::heartbeat().await {
-                    debug!(?e, "heartbeat failed");
-                    continue;
-                }
-                match crate::cmd::work::rpc::RpcClient::get_log_settings().await {
-                    Ok(app_peer_comms::rpc::request::LogSettingsResult::Ok(settings)) => {
-                        let settings = app_logger::LogFilterSettings {
-                            console: settings.console,
-                            file: settings.file,
-                        };
-                        if let Err(e) = app_logger::apply_log_filter_settings(&settings) {
-                            error!(?e, "Failed to apply dynamic log settings");
-                        }
-                    }
-                    Ok(result) => debug!(?result, "central did not return log settings"),
-                    Err(e) => debug!(?e, "log settings request failed"),
-                }
+                refresh_dynamic_settings().await;
             }
         });
     });
@@ -115,6 +126,38 @@ pub async fn run(
                 error!(?e, "refuse_work_item failed");
             }
         }
+    }
+}
+
+async fn refresh_dynamic_settings() {
+    if crate::cmd::work::rpc::RpcClient::heartbeat().await.is_err() {
+        debug!("heartbeat failed");
+        return;
+    }
+    match crate::cmd::work::rpc::RpcClient::get_log_settings().await {
+        Ok(app_peer_comms::rpc::request::LogSettingsResult::Ok(settings)) => {
+            let settings = app_logger::LogFilterSettings {
+                console: settings.console,
+                file: settings.file,
+            };
+            if let Err(e) = app_logger::apply_log_filter_settings(&settings) {
+                error!(?e, "Failed to apply dynamic log settings");
+            }
+        }
+        Ok(result) => debug!(?result, "central did not return log settings"),
+        Err(e) => debug!(?e, "log settings request failed"),
+    }
+    match crate::cmd::work::rpc::RpcClient::get_secrets().await {
+        Ok(app_peer_comms::rpc::request::SecretsResult::Ok(entries)) => {
+            set_secrets(
+                entries
+                    .into_iter()
+                    .map(|entry| (entry.name, entry.value))
+                    .collect(),
+            );
+        }
+        Ok(result) => debug!(?result, "central did not return secrets"),
+        Err(e) => debug!(?e, "secrets request failed"),
     }
 }
 

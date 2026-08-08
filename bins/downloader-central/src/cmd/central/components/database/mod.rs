@@ -86,6 +86,14 @@ pub async fn run(config: DatabaseConfig) -> super::ComponentResult {
     ));
 
     js.spawn(keep_running(
+        "Database::secrets_watcher",
+        Box::new(run_secrets_watcher),
+        RetryConfig::new()
+            .with_retry_delays(RETRY_DELAYS.clone())
+            .with_reset_retries_after(Some(FIVE_MINS)),
+    ));
+
+    js.spawn(keep_running(
         "Database::revocation_watcher",
         Box::new(|| async {
             trace!("Starting authed revocation watcher");
@@ -145,6 +153,18 @@ async fn run_log_settings_watcher() -> super::ComponentResult {
                 }
             }
             Err(e) => warn!(?e, "Error reading log settings from database"),
+        }
+    }
+    Ok(())
+}
+
+async fn run_secrets_watcher() -> super::ComponentResult {
+    trace!("Starting secrets watcher");
+    let mut stream = Database::global().secrets_watch().await?;
+    while let Some(emission) = stream.next().await {
+        match emission {
+            Ok(rows) => super::rpc::set_secrets(rows),
+            Err(e) => warn!(?e, "Error reading secrets from database"),
         }
     }
     Ok(())

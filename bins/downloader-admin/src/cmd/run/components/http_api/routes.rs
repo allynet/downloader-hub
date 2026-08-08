@@ -9,6 +9,7 @@ use app_database::{
         requests::{
             CancelResult, RemoveResult, RequestStatusType, RequestsByStatusPage, RetryResult,
         },
+        secrets::SecretEntry,
     },
     entity::{
         accounts::{AccountPlaceRef, AccountUserRef, Platform},
@@ -130,6 +131,54 @@ pub async fn set_log_settings(
         }),
         Err(e) => {
             tracing::error!(?e, "set_log_settings failed");
+            V1Response::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
+        }
+    }
+}
+
+pub async fn list_secrets(_session: AdminSession) -> impl IntoResponse {
+    match Database::global().secrets_list().await {
+        Ok(rows) => V1Response::ok(rows),
+        Err(e) => {
+            tracing::error!(?e, "list_secrets failed");
+            V1Response::<Vec<SecretEntry>>::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
+        }
+    }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct SetSecretBody {
+    pub name: String,
+    pub value: String,
+}
+
+pub async fn set_secret(
+    _session: WriteSession,
+    Json(body): Json<SetSecretBody>,
+) -> impl IntoResponse {
+    let name = body.name.trim();
+    let value = body.value.trim();
+    if name.is_empty() {
+        return V1Response::<SecretEntry>::err(StatusCode::BAD_REQUEST, "name is required");
+    }
+    match Database::global().secrets_set(name, value).await {
+        Ok(()) => V1Response::ok(SecretEntry {
+            name: name.to_string(),
+            value: value.to_string(),
+            updated_at: 0,
+        }),
+        Err(e) => {
+            tracing::error!(?e, "set_secret failed");
+            V1Response::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
+        }
+    }
+}
+
+pub async fn remove_secret(_session: WriteSession, Path(name): Path<String>) -> impl IntoResponse {
+    match Database::global().secrets_remove(&name).await {
+        Ok(()) => V1Response::ok(serde_json::json!({ "removed": true })),
+        Err(e) => {
+            tracing::error!(?e, "remove_secret failed");
             V1Response::err(StatusCode::INTERNAL_SERVER_ERROR, "database error")
         }
     }

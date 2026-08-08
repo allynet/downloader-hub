@@ -89,4 +89,7 @@ pub enum CentralProtocol {
 
     #[rpc(tx = oneshot::Sender<request::LogSettingsResult>)]
     GetLogSettings(request::GetLogSettings),
+
+    #[rpc(tx = oneshot::Sender<request::SecretsResult>)]
+    GetSecrets(request::GetSecrets),
 }

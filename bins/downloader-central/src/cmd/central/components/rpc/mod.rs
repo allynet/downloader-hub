@@ -9,6 +9,7 @@ use app_database::{
     api::{
         authed::AuthedInfoResponse,
         log_settings::{LogSettings, LogSettingsScope, resolve_log_settings},
+        secrets::SecretEntry,
     },
     entity::{accounts::Platform, authed::AuthedForRole},
 };
@@ -42,7 +43,7 @@ use app_peer_comms::{
     },
     rpc::{
         AuthResult, CentralProtocol, CentralRequest,
-        request::{Capabilities, CapabilitiesSummary, LogSettingsResult},
+        request::{Capabilities, CapabilitiesSummary, LogSettingsResult, SecretsResult},
     },
 };
 use arc_swap::ArcSwapOption;
@@ -163,6 +164,20 @@ pub fn set_log_settings(settings: Vec<LogSettings>) {
         .expect("log settings not initialized")
         .write()
         .expect("log settings lock poisoned") = settings;
+}
+
+static SECRETS: OnceLock<RwLock<Vec<SecretEntry>>> = OnceLock::new();
+
+pub fn init_secrets() {
+    _ = SECRETS.set(RwLock::new(Vec::new()));
+}
+
+pub fn set_secrets(secrets: Vec<SecretEntry>) {
+    *SECRETS
+        .get()
+        .expect("secrets not initialized")
+        .write()
+        .expect("secrets lock poisoned") = secrets;
 }
 
 fn log_settings_for(role: &AuthedForRole) -> Option<app_peer_comms::rpc::request::LogSettings> {
@@ -1072,6 +1087,29 @@ impl CentralRpcServer {
                 let WithChannels { tx, .. } = r;
                 let result = log_settings_for(&role)
                     .map_or(LogSettingsResult::Unauthorized, LogSettingsResult::Ok);
+                let _ = tx.send(result).await;
+            }
+            CentralRequest::GetSecrets(r) => {
+                let WithChannels { tx, .. } = r;
+                let result = match role {
+                    AuthedForRole::Worker => {
+                        let entries = SECRETS
+                            .get()
+                            .expect("secrets not initialized")
+                            .read()
+                            .expect("secrets lock poisoned");
+                        SecretsResult::Ok(
+                            entries
+                                .iter()
+                                .map(|s| app_peer_comms::rpc::request::SecretEntry {
+                                    name: s.name.clone(),
+                                    value: s.value.clone(),
+                                })
+                                .collect(),
+                        )
+                    }
+                    _ => SecretsResult::Unauthorized,
+                };
                 let _ = tx.send(result).await;
             }
         }

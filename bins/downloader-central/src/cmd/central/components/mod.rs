@@ -27,6 +27,7 @@ pub async fn spawn(
     rpc::init_distributor();
     rpc::init_restrictions();
     rpc::init_log_settings();
+    rpc::init_secrets();
 
     init_peering(config.peer).await?;
 

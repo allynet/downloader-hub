@@ -110,6 +110,15 @@ pub struct RunConfig {
     /// The standard format is `<id>.<original_name>.<extension>`.
     #[clap(long, action = clap::ArgAction::SetTrue)]
     pub and_rename: bool,
+
+    /// Cookie header value sent with every extraction/download request.
+    ///
+    /// Useful for posts that require authentication, e.g. age-gated Instagram
+    /// posts: pass a logged-in `sessionid=...; ds_user_id=...` cookie.
+    ///
+    /// Applied to all URLs in this run.
+    #[clap(long, value_name = "COOKIE")]
+    pub cookie: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Args, Serialize, Deserialize, Validate)]

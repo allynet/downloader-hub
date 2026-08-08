@@ -12,6 +12,7 @@ const NAV = [
   { to: "/accounts", label: "Accounts" },
   { to: "/restrictions", label: "Restrictions" },
   { to: "/logging", label: "Logging" },
+  { to: "/secrets", label: "Secrets" },
   { to: "/metrics", label: "Metrics" },
 ] as const;
 

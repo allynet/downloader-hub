@@ -19,6 +19,7 @@ import type * as lib_triggers from "../lib/triggers.js";
 import type * as logSettings from "../logSettings.js";
 import type * as requests from "../requests.js";
 import type * as restrictions from "../restrictions.js";
+import type * as secrets from "../secrets.js";
 
 import type {
   ApiFromModules,
@@ -38,6 +39,7 @@ declare const fullApi: ApiFromModules<{
   logSettings: typeof logSettings;
   requests: typeof requests;
   restrictions: typeof restrictions;
+  secrets: typeof secrets;
 }>;
 
 /**

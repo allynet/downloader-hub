@@ -5,9 +5,12 @@ use app_actions::{
         Action, ActionRequest,
         handlers::{file_rename_to_id::RenameToId, split_scenes::SplitScenes},
     },
-    download_file, fix_file,
+    download_file,
+    extractors::ExtractInfoRequest,
+    fix_file,
 };
 use futures::{StreamExt, stream::FuturesUnordered};
+use http::{HeaderValue, header};
 use tracing::{debug, error, info, warn};
 use tracing_subscriber::{filter::LevelFilter, util::SubscriberInitExt};
 
@@ -62,15 +65,26 @@ async fn main() {
     info!("Outputting to {:?}", cli_config.output_directory);
 
     info!("Starting download");
+    let cookie = cli_config.cookie.clone();
     let downloaded_urls = urls
         .into_iter()
-        .map(|url| async move {
-            let url_str = url.to_string();
-            download_file(url, &cli_config.output_directory)
-                .await
-                .into_iter()
-                .map(|x| x.map_err(|e| (url_str.clone(), e)))
-                .collect::<Vec<_>>()
+        .map(|url| {
+            let cookie = cookie.clone();
+            async move {
+                let url_str = url.to_string();
+                let mut request = ExtractInfoRequest::new(url);
+                if let Some(cookie) = cookie.as_deref() {
+                    match HeaderValue::from_str(cookie) {
+                        Ok(value) => request = request.with_header(header::COOKIE, value),
+                        Err(e) => warn!("Ignoring invalid --cookie value: {e}"),
+                    }
+                }
+                download_file(request, &cli_config.output_directory)
+                    .await
+                    .into_iter()
+                    .map(|x| x.map_err(|e| (url_str.clone(), e)))
+                    .collect::<Vec<_>>()
+            }
         })
         .collect::<FuturesUnordered<_>>()
         .collect::<Vec<_>>()

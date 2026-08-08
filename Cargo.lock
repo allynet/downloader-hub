@@ -2105,6 +2105,7 @@ dependencies = [
  "app-config",
  "clap",
  "futures",
+ "http 1.4.2",
  "serde",
  "tikv-jemallocator",
  "tokio",

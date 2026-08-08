@@ -26,19 +26,24 @@ impl Extractor for Instagram {
     }
 
     async fn extract_info(&self, request: &ExtractInfoRequest) -> Result<ExtractedInfo, String> {
-        for i in 0_u32..3 {
-            let Some(media_urls) = get_media_urls(request.url.as_str()).await? else {
-                let delay = Duration::from_secs(2_u64.pow(i));
-                debug!(
-                    ?i,
-                    ?delay,
-                    "Failed to get media urls from post, retrying after delay",
-                );
-                tokio::time::sleep(delay).await;
-                continue;
-            };
+        let cookie = request
+            .headers
+            .get(header::COOKIE)
+            .and_then(|v| v.to_str().ok());
 
-            return Ok(ExtractedInfo::from_urls(request, media_urls));
+        for i in 0_u32..3 {
+            match get_media_urls(request.url.as_str(), cookie).await? {
+                Some(media_urls) => return Ok(ExtractedInfo::from_urls(request, media_urls)),
+                None => {
+                    let delay = Duration::from_secs(2_u64.pow(i));
+                    debug!(
+                        ?i,
+                        ?delay,
+                        "Failed to get media urls from post, retrying after delay",
+                    );
+                    tokio::time::sleep(delay).await;
+                }
+            }
         }
 
         Err(
@@ -60,8 +65,64 @@ impl Instagram {
     }
 }
 
+async fn get_media_urls(url: &str, cookie: Option<&str>) -> Result<Option<Vec<Url>>, String> {
+    if let Some(cookie) = cookie {
+        match get_media_urls_authed(url, cookie).await {
+            Ok(Some(urls)) => return Ok(Some(urls)),
+            Ok(None) => debug!("Authed fetch returned no media; falling back to anonymous"),
+            Err(e) => debug!(?e, "Authed extraction failed; falling back to anonymous"),
+        }
+    }
+    get_media_urls_anonymous(url).await
+}
+
 #[tracing::instrument(skip_all, fields(url = %url))]
-async fn get_media_urls(url: &str) -> Result<Option<Vec<Url>>, String> {
+async fn get_media_urls_authed(url: &str, cookie: &str) -> Result<Option<Vec<Url>>, String> {
+    trace!("Fetching instagram media URLs from post (authed)");
+
+    let Some(shortcode) = shortcode_from_url(url) else {
+        return Err("Failed to extract shortcode from URL".to_string());
+    };
+
+    let client = Client::sneaky().map_err(|e| format!("Failed to create client: {e:?}"))?;
+
+    let resp = client
+        .get(url)
+        .header(
+            header::USER_AGENT,
+            ActionsConfig::request().user_agent.as_str(),
+        )
+        .header(header::COOKIE, cookie)
+        .send()
+        .await
+        .map_err(|e| format!("Failed to send request: {e:?}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Failed to get response: {:?}", resp.status()));
+    }
+
+    let resp_html = resp
+        .text()
+        .await
+        .map_err(|e| format!("Failed to get response text: {e:?}"))?;
+
+    let info =
+        tokio::task::spawn_blocking(move || extract_info_from_html_authed(&resp_html, &shortcode))
+            .await
+            .map_err(|e| format!("Instagram authed extraction crashed: {e:?}"))?;
+
+    Ok(info)
+}
+
+fn shortcode_from_url(url: &str) -> Option<String> {
+    URL_MATCH
+        .captures(url)
+        .and_then(|captures| captures.name("post_id"))
+        .map(|m| m.as_str().to_string())
+}
+
+#[tracing::instrument(skip_all, fields(url = %url))]
+async fn get_media_urls_anonymous(url: &str) -> Result<Option<Vec<Url>>, String> {
     trace!("Fetching instagram media URLs from post");
 
     let client = Client::sneaky().map_err(|e| format!("Failed to create client: {e:?}"))?;
@@ -250,4 +311,83 @@ fn find_stream_cache(val: serde_json::Value) -> Option<serde_json::Value> {
     }
 
     None
+}
+
+fn extract_info_from_html_authed(html: &str, shortcode: &str) -> Option<Vec<Url>> {
+    Html::parse_document(html)
+        .select(&Selector::parse("script").expect("Invalid selector"))
+        .filter_map(|x| {
+            let text = x.text().collect::<String>();
+            if !text.contains(shortcode) {
+                return None;
+            }
+            Some(text)
+        })
+        .find_map(|script| {
+            let val = serde_json::from_str::<serde_json::Value>(&script).ok()?;
+            find_media_for_code(&val, shortcode)
+        })
+}
+
+fn find_media_for_code(val: &serde_json::Value, code: &str) -> Option<Vec<Url>> {
+    if let Some(c) = val.get("code").and_then(|v| v.as_str())
+        && c == code
+        && let Some(urls) = media_urls_from_container(val)
+    {
+        return Some(urls);
+    }
+    match val {
+        serde_json::Value::Object(obj) => {
+            for v in obj.values() {
+                if let Some(found) = find_media_for_code(v, code) {
+                    return Some(found);
+                }
+            }
+        }
+        serde_json::Value::Array(arr) => {
+            for v in arr {
+                if let Some(found) = find_media_for_code(v, code) {
+                    return Some(found);
+                }
+            }
+        }
+        _ => {}
+    }
+    None
+}
+
+fn media_urls_from_container(media: &serde_json::Value) -> Option<Vec<Url>> {
+    let mut urls = Vec::new();
+    if let Some(items) = media.get("carousel_media").and_then(|v| v.as_array()) {
+        for item in items {
+            if let Some(url) = best_media_url(item) {
+                urls.push(url);
+            }
+        }
+    }
+    if urls.is_empty()
+        && let Some(url) = best_media_url(media)
+    {
+        urls.push(url);
+    }
+    if urls.is_empty() { None } else { Some(urls) }
+}
+
+fn best_media_url(media: &serde_json::Value) -> Option<Url> {
+    let url = media
+        .get("video_versions")
+        .and_then(|v| v.as_array())
+        .and_then(|arr| arr.first())
+        .and_then(|v| v.get("url"))
+        .and_then(|u| u.as_str())
+        .or_else(|| {
+            media
+                .get("image_versions2")
+                .and_then(|v| v.get("candidates"))
+                .and_then(|v| v.as_array())
+                .and_then(|arr| arr.first())
+                .and_then(|v| v.get("url"))
+                .and_then(|u| u.as_str())
+        });
+    url.and_then(|s| Url::parse(s).ok())
 }

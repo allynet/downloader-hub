@@ -254,3 +254,30 @@ pub enum LogSettingsResult {
     Unauthorized,
     BackendError,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetSecrets;
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct SecretEntry {
+    pub name: String,
+    pub value: String,
+}
+
+impl std::fmt::Debug for SecretEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SecretEntry")
+            .field("name", &self.name)
+            .field("value", &"[redacted]")
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum SecretsResult {
+    Ok(Vec<SecretEntry>),
+    Unauthorized,
+    BackendError,
+}

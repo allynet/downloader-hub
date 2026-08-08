@@ -107,6 +107,11 @@ fn api_router() -> Router<AppState> {
             axum::routing::put(routes::set_log_settings),
         )
         .route(
+            "/secrets",
+            get(routes::list_secrets).post(routes::set_secret),
+        )
+        .route("/secrets/{name}", delete(routes::remove_secret))
+        .route(
             "/authed",
             get(routes::list_authed).post(routes::create_authed),
         )
