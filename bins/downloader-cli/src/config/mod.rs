@@ -46,10 +46,16 @@ pub struct Config {
 
 impl Config {
     pub fn init_parsed() -> Result<&'static Self, String> {
-        let parsed = Self::parse()
-            .resolve_paths()
-            .validate_or_exit()
-            .dump_if_needed();
+        let mut parsed = Self::parse().resolve_paths().validate_or_exit();
+
+        if parsed.run.no_auto_crop {
+            parsed.disabled_entries.entries.extend([
+                common::DisableEntry::new("fixer", "CropImage"),
+                common::DisableEntry::new("fixer", "CropVideoBars"),
+            ]);
+        }
+
+        let parsed = parsed.dump_if_needed();
 
         {
             let parsed = parsed.clone();
@@ -110,6 +116,10 @@ pub struct RunConfig {
     /// The standard format is `<id>.<original_name>.<extension>`.
     #[clap(long, action = clap::ArgAction::SetTrue)]
     pub and_rename: bool,
+
+    /// Disable automatic cropping for all files processed in this run.
+    #[clap(long, action = clap::ArgAction::SetTrue)]
+    pub no_auto_crop: bool,
 
     /// Cookie header value sent with every extraction/download request.
     ///
