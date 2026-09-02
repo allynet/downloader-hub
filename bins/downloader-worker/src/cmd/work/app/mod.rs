@@ -54,7 +54,9 @@ pub fn secret_value_for(
         || ordered_by.is_some_and(|user| entry.allowed_users.contains(user));
     let place_ok = entry.allowed_places.is_empty()
         || ordered_in.is_some_and(|place| entry.allowed_places.contains(place));
-    (user_ok && place_ok).then(|| entry.value.clone())
+    let value = (user_ok && place_ok).then(|| entry.value.clone());
+    drop(guard);
+    value
 }
 
 #[instrument(name = "worker", skip_all)]

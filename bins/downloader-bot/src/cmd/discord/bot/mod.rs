@@ -132,7 +132,7 @@ impl EventHandler for Handler {
                         };
 
                         if !matches!(
-                            broadcast_err,
+                            broadcast_err.as_ref(),
                             serenity::Error::Io(_) | serenity::Error::ExceededLimit(_, _)
                         ) {
                             continue;
@@ -243,7 +243,10 @@ impl EventHandler for Handler {
     }
 }
 
-async fn handle_broadcast(broadcast: Broadcast, ctx: Arc<Context>) -> Result<(), serenity::Error> {
+async fn handle_broadcast(
+    broadcast: Broadcast,
+    ctx: Arc<Context>,
+) -> Result<(), Box<serenity::Error>> {
     match broadcast.data.as_ref() {
         BroadcastData::Global(msg) => {
             trace!(?msg, "Global message");

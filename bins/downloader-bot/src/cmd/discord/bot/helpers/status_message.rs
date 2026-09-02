@@ -84,7 +84,7 @@ impl StatusMessage {
         self.try_send_sub_message(text).await.ok()
     }
 
-    async fn try_send_sub_message(&self, text: &str) -> Result<Self, serenity::Error> {
+    async fn try_send_sub_message(&self, text: &str) -> Result<Self, Box<serenity::Error>> {
         let new_msg = self.try_send_additional_message(text).await?;
 
         Ok(Self {
@@ -101,7 +101,10 @@ impl StatusMessage {
         self.try_send_additional_message(text).await.ok()
     }
 
-    async fn try_send_additional_message(&self, text: &str) -> Result<Message, serenity::Error> {
+    async fn try_send_additional_message(
+        &self,
+        text: &str,
+    ) -> Result<Message, Box<serenity::Error>> {
         trace!(channel_id = ?self.channel_id, "Sending additional message");
         let builder = CreateMessage::new()
             .content(text)
@@ -111,7 +114,7 @@ impl StatusMessage {
             .await
             .map_err(|e| {
                 warn!(channel_id = ?self.channel_id, ?e, "Failed to send additional message");
-                e
+                Box::new(e)
             })
     }
 
@@ -126,7 +129,7 @@ impl StatusMessage {
         }
     }
 
-    async fn try_update_message(&mut self, text: &str) -> Result<(), serenity::Error> {
+    async fn try_update_message(&mut self, text: &str) -> Result<(), Box<serenity::Error>> {
         if self.status_msg_id.is_some() && self.last_content.as_deref() == Some(text) {
             trace!(channel_id = ?self.channel_id, "Status message unchanged, skipping edit");
             return Ok(());
@@ -159,7 +162,7 @@ impl StatusMessage {
             );
             self.status_msg_id = None;
             self.last_content = None;
-            return Err(Self::unknown_message_err());
+            return Err(Box::new(Self::unknown_message_err()));
         }
 
         if let Err(e) = res {
@@ -169,7 +172,7 @@ impl StatusMessage {
                 ?e,
                 "Failed to update message"
             );
-            return Err(e);
+            return Err(Box::new(e));
         }
 
         self.last_content = Some(text.to_string());
@@ -192,7 +195,7 @@ impl StatusMessage {
         }
     }
 
-    async fn try_delete_message(&self) -> Result<(), serenity::Error> {
+    async fn try_delete_message(&self) -> Result<(), Box<serenity::Error>> {
         if let Some(id) = self.status_msg_id {
             self.channel_id.delete_message(Self::http(), id).await?;
         }

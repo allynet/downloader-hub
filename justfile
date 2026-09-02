@@ -69,6 +69,7 @@ lint:
         --workspace \
         --all-features \
         -- \
+        -D warnings \
 
 lint-fix:
     cargo clippy \
